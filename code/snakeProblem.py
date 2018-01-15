@@ -1,8 +1,42 @@
 # This code defines the agent (as in the playable version) in a way that can be called and executed from an evolutionary algorithm. The code is partial and will not execute. You need to add to the code to create an evolutionary algorithm that evolves and executes a snake agent.
 import curses
 import random
+
+from deap import algorithms
+from deap import base
+from deap import creator
+from deap import tools
+from deap import gp
+
 import operator
 from functools import partial
+import numpy
+
+## Functions which execute their arguments
+from pandas._libs.hashtable import na_sentinel
+
+from matplotlib import pyplot as plt
+
+
+def progn(*args):
+    for arg in args:
+        arg()
+
+
+def prog2(out1, out2):
+    return partial(progn, out1, out2)
+
+
+def prog3(out1, out2, out3):
+    return partial(progn, out1, out2, out3)
+
+
+def if_then_else(condition, out1, out2):
+    if condition():
+        return partial(progn, out1)
+    else:
+        return partial(progn, out2)
+
 
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0, 1, 2, 3
 XSIZE, YSIZE = 14, 14
@@ -70,6 +104,15 @@ class SnakePlayer(list):
         self.getAheadLocation()
         return self.ahead in self.body
 
+    def if_food_ahead(self, out1, out2):
+        return if_then_else(self.sense_food_ahead, out1, out2)
+
+    def if_wall_ahead(self, out1, out2):
+        return if_then_else(self.sense_wall_ahead, out1, out2)
+
+    def if_tail_ahead(self, out1, out2):
+        return if_then_else(self.sense_tail_ahead, out1, out2)
+
 
 # This function places a food item in the environment
 def placeFood(snake):
@@ -89,7 +132,7 @@ snake = SnakePlayer()
 # it displays the game graphically and thus runs slower
 # This function is designed for you to be able to view and assess
 # your strategies, rather than use during the course of evolution
-def displayStrategyRun():
+def displayStrategyRun(individual):
     global snake
     global pset
 
@@ -120,6 +163,7 @@ def displayStrategyRun():
         win.getch()
 
         ## EXECUTE THE SNAKE'S BEHAVIOUR HERE ##
+        routine()
 
         snake.updatePosition()
 
@@ -152,7 +196,7 @@ def displayStrategyRun():
 # you need to modify it for running your agents through the game for evaluation
 # which will depend on what type of EA you have used, etc.
 # Feel free to make any necessary modifications to this section.
-def runGame():
+def runGame(routine):
     global snake
 
     totalScore = 0
@@ -163,6 +207,7 @@ def runGame():
     while not snake.snakeHasCollided() and not timer == XSIZE * YSIZE:
 
         ## EXECUTE THE SNAKE'S BEHAVIOUR HERE ##
+        routine()
 
         snake.updatePosition()
 
@@ -183,7 +228,143 @@ def main():
     global snake
     global pset
 
+    NUMBER_OF_RUNS = 30
+    POPULATION_SIZE = 200
+    MATE_RATE = 0.5
+    MUTATION_RATE = 0.1
+    GENERATIONS = 400
+
+    logs = []
+
+    for i in range(NUMBER_OF_RUNS):
+        pop = toolbox.population(n=POPULATION_SIZE)
+        hof = tools.HallOfFame(1)
+
+        stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
+        stats_size = tools.Statistics(lambda ind: ind.height)
+        stats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
+        stats.register("avg", numpy.mean)
+        stats.register("std", numpy.std)
+        stats.register("min", numpy.min)
+        stats.register("max", numpy.max)
+
+        sm, log = algorithms.eaSimple(pop, toolbox, MATE_RATE, MUTATION_RATE, GENERATIONS, stats, halloffame=hof,
+                                      verbose=False)
+
+        print 'RUN', i
+
+        logs.append(log)
+
+    #
+    # # displayStrategyRun(hof[0])
+    #
+    log_tocsv(logs)
+
+    return pop, hof, stats, log
+
 
 ## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
+INIT_MIN_DEPTH = 1
+INIT_MAX_DEPTH = 5
+MUTATE_MIN_DEPTH = 0
+MUTATE_MAX_DEPTH = 2
+TOURNAMENT_SIZE = 10
 
-main()
+pset = gp.PrimitiveSet("MAIN", 0)
+pset.addPrimitive(snake.if_food_ahead, 2)
+pset.addPrimitive(snake.if_wall_ahead, 2)
+pset.addPrimitive(snake.if_tail_ahead, 2)
+pset.addPrimitive(prog2, 2)
+pset.addPrimitive(prog3, 3)
+
+pset.addTerminal(snake.changeDirectionDown)
+pset.addTerminal(snake.changeDirectionLeft)
+pset.addTerminal(snake.changeDirectionRight)
+pset.addTerminal(snake.changeDirectionUp)
+
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
+
+toolbox = base.Toolbox()
+
+# Attribute generator
+toolbox.register("expr_init", gp.genHalfAndHalf, pset=pset, min_=INIT_MIN_DEPTH, max_=INIT_MAX_DEPTH)
+
+# Structure initializers
+toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr_init)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+
+def evalSnake(individual):
+    # Transform the tree expression to functionnal Python code
+    routine = gp.compile(individual, pset)
+    # Run the generated routine
+    score = runGame(routine)
+    return score
+
+
+toolbox.register("evaluate", evalSnake)
+toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
+toolbox.register("mate", gp.cxOnePoint)
+toolbox.register("expr_mut", gp.genHalfAndHalf, min_=MUTATE_MIN_DEPTH, max_=MUTATE_MAX_DEPTH)
+toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
+
+from scoop import futures
+toolbox.register("map", futures.map)
+
+
+def plotstuff(log):
+    gen = log.select("gen")
+    fit_mins = log.chapters["fitness"].select("avg")
+    size_avgs = log.chapters["size"].select("avg")
+
+    fig, ax1 = plt.subplots()
+    line1 = ax1.plot(gen, fit_mins, "b-", label="Average Fitness")
+    ax1.set_xlabel("Generation")
+    ax1.set_ylabel("Fitness", color="b")
+    for tl in ax1.get_yticklabels():
+        tl.set_color("b")
+
+    ax2 = ax1.twinx()
+    line2 = ax2.plot(gen, size_avgs, "r-", label="Average Size")
+    ax2.set_ylabel("Size", color="r")
+    for tl in ax2.get_yticklabels():
+        tl.set_color("r")
+
+    lns = line1 + line2
+    labs = [l.get_label() for l in lns]
+    ax1.legend(lns, labs, loc="center right")
+
+    plt.show()
+
+
+def log_tocsv(logs):
+    import csv
+
+    keys = ['gen', 'nevals'] + [j + '_' + i for j in sorted(logs[0].chapters.keys())
+                                            for i in sorted(logs[0].chapters['fitness'][0].keys())]
+
+    values = [{k: 0 for k in keys} for j in range(len(logs[0]))]
+
+    for log in logs:
+        for i in range(len(log)):
+
+            values[i]['gen'] += log[i]['gen']
+            values[i]['nevals'] += log[i]['nevals']
+
+            for key in log.chapters.keys():
+                for subkey in log.chapters[key][i].keys():
+                    values[i][key + '_' + subkey] += log.chapters[key][i][subkey]
+
+    for dic in values:
+        for key in dic.keys():
+            dic[key] /= len(logs)
+
+    with open('eggs.csv', 'wb') as csvfile:
+        writer = csv.DictWriter(csvfile, delimiter=',', fieldnames=keys)
+        writer.writeheader()
+        writer.writerows(values)
+
+
+if __name__ == '__main__':
+    main()
