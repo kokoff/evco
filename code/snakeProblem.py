@@ -228,11 +228,11 @@ def main():
     global snake
     global pset
 
-    NUMBER_OF_RUNS = 30
+    NUMBER_OF_RUNS = 2
     POPULATION_SIZE = 200
     MATE_RATE = 0.5
     MUTATION_RATE = 0.1
-    GENERATIONS = 400
+    GENERATIONS = 10
 
     logs = []
 
@@ -249,7 +249,7 @@ def main():
         stats.register("max", numpy.max)
 
         sm, log = algorithms.eaSimple(pop, toolbox, MATE_RATE, MUTATION_RATE, GENERATIONS, stats, halloffame=hof,
-                                      verbose=False)
+                                      verbose=True)
 
         print 'RUN', i
 
@@ -258,7 +258,7 @@ def main():
     #
     # # displayStrategyRun(hof[0])
     #
-    log_tocsv(logs)
+    logs_statistics(logs)
 
     return pop, hof, stats, log
 
@@ -310,7 +310,14 @@ toolbox.register("expr_mut", gp.genHalfAndHalf, min_=MUTATE_MIN_DEPTH, max_=MUTA
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
 from scoop import futures
+
 toolbox.register("map", futures.map)
+
+
+## THE FOLLOWING FUNCTIONS EVALUATE THE PERFORMANCE OF THE ALGORITHM
+
+def analyse(logs, hof):
+    statistics = logs_statistics(logs)
 
 
 def plotstuff(log):
@@ -338,11 +345,49 @@ def plotstuff(log):
     plt.show()
 
 
-def log_tocsv(logs):
-    import csv
+def logs_statistics(logs):
+    from pandas import DataFrame
 
+    # Convert logbook to numpy arrays
+    log_gen = numpy.array([log.select('gen') for log in logs])
+    log_nevals = numpy.array([log.select('nevals') for log in logs])
+    log_fitness_avg = numpy.array([log.chapters['fitness'].select('avg') for log in logs])
+    log_fitness_max = numpy.array([log.chapters['fitness'].select('max') for log in logs])
+    log_fitness_min = numpy.array([log.chapters['fitness'].select('min') for log in logs])
+    log_fitness_std = numpy.array([log.chapters['fitness'].select('std') for log in logs])
+    log_size_avg = numpy.array([log.chapters['size'].select('avg') for log in logs])
+    log_size_max = numpy.array([log.chapters['size'].select('max') for log in logs])
+    log_size_min = numpy.array([log.chapters['size'].select('min') for log in logs])
+    log_size_std = numpy.array([log.chapters['size'].select('std') for log in logs])
+
+    # summarise statistics for each generation
+    data_dic = {}
+    data_dic['gen'] = numpy.mean(log_gen, 0)
+    data_dic['nevals'] = numpy.mean(log_nevals, 0)
+
+    data_dic['fitness_avg'] = numpy.mean(log_fitness_avg, 0)
+    data_dic['fitness_max'] = numpy.max(log_fitness_max, 0)
+    data_dic['fitness_min'] = numpy.min(log_fitness_min, 0)
+    data_dic['fitness_std'] = numpy.sqrt(numpy.sum(log_fitness_std ** 2, 0))  # pooled std
+
+    data_dic['size_avg'] = numpy.mean(log_size_avg, 0)
+    data_dic['size_max'] = numpy.max(log_size_max, 0)
+    data_dic['size_min'] = numpy.min(log_size_min, 0)
+    data_dic['size_std'] = numpy.sqrt(numpy.sum(log_size_std ** 2, 0))  # pooled std
+
+    df = DataFrame(data_dic)
+
+    cols = ['gen', 'nevals', 'fitness_avg', 'fitness_max', 'fitness_min', 'fitness_std', 'size_avg', 'size_max',
+            'size_min', 'size_std']
+    df.to_csv('eggs.csv', sep=',', columns=cols)
+
+    df[['gen', 'fitness_avg', 'fitness_std']].plot(x='gen', yerr='fitness_std')
+    plt.show(kind='box')
+
+    print df
+    return
     keys = ['gen', 'nevals'] + [j + '_' + i for j in sorted(logs[0].chapters.keys())
-                                            for i in sorted(logs[0].chapters['fitness'][0].keys())]
+                                for i in sorted(logs[0].chapters['fitness'][0].keys())]
 
     values = [{k: 0 for k in keys} for j in range(len(logs[0]))]
 
@@ -354,16 +399,32 @@ def log_tocsv(logs):
 
             for key in log.chapters.keys():
                 for subkey in log.chapters[key][i].keys():
-                    values[i][key + '_' + subkey] += log.chapters[key][i][subkey]
+                    if subkey is 'std':
+                        values[i][key + '_' + subkey] += log.chapters[key][i][subkey] ** 2
+                    elif subkey is 'max':
+                        values[i][key + '_' + subkey] = max(log.chapters[key][i][subkey], values[i][key + '_' + subkey])
+                    elif subkey is 'min':
+                        values[i][key + '_' + subkey] = min(log.chapters[key][i][subkey], values[i][key + '_' + subkey])
+                    else:
+                        values[i][key + '_' + subkey] += log.chapters[key][i][subkey]
 
     for dic in values:
         for key in dic.keys():
-            dic[key] /= len(logs)
+            if key is 'std':
+                dic[key] = numpy.sqrt(len(logs) / len(logs))
+            elif key is 'max':
+                pass
+            elif key is 'min':
+                pass
+            else:
+                dic[key] /= len(logs)
 
     with open('eggs.csv', 'wb') as csvfile:
         writer = csv.DictWriter(csvfile, delimiter=',', fieldnames=keys)
         writer.writeheader()
         writer.writerows(values)
+
+    return values
 
 
 if __name__ == '__main__':
