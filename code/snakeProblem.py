@@ -33,9 +33,9 @@ def prog3(out1, out2, out3):
 
 def if_then_else(condition, out1, out2):
     if condition():
-        return partial(progn, out1)
+        out1()
     else:
-        return partial(progn, out2)
+        out2()
 
 
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0, 1, 2, 3
@@ -65,6 +65,18 @@ class SnakePlayer(list):
     def getAheadLocation(self):
         self.ahead = [self.body[0][0] + (self.direction == S_DOWN and 1) + (self.direction == S_UP and -1),
                       self.body[0][1] + (self.direction == S_LEFT and -1) + (self.direction == S_RIGHT and 1)]
+
+    # def getLeftLocation(self):
+    #     return [self.body[0][0] + (self.direction == S_LEFT and 1) + (self.direction == S_RIGHT and -1),
+    #             self.body[0][1] + (self.direction == S_UP and -1) + (self.direction == S_DOWN and 1)]
+    #
+    # def getRightLocation(self):
+    #     return [self.body[0][0] + (self.direction == S_RIGHT and 1) + (self.direction == S_LEFT and -1),
+    #             self.body[0][1] + (self.direction == S_DOWN and -1) + (self.direction == S_UP and 1)]
+    #
+    # def getBehindLocation(self):
+    #     return [self.body[0][0] + (self.direction == S_UP and 1) + (self.direction == S_DOWN and -1),
+    #             self.body[0][1] + (self.direction == S_RIGHT and -1) + (self.direction == S_LEFT and 1)]
 
     def updatePosition(self):
         self.getAheadLocation()
@@ -107,11 +119,82 @@ class SnakePlayer(list):
     def if_food_ahead(self, out1, out2):
         return if_then_else(self.sense_food_ahead, out1, out2)
 
-    def if_wall_ahead(self, out1, out2):
-        return if_then_else(self.sense_wall_ahead, out1, out2)
+    # food in line
+    def sense_food_in_line(self, direction):
+        if direction == S_DOWN:
+            line = [[i, self.body[0][1]] for i in range(self.body[0][0] + 1, YSIZE)]
+        if direction == S_UP:
+            line = [[i, self.body[0][1]] for i in range(0, self.body[0][0])]
+        if direction == S_RIGHT:
+            line = [[self.body[0][0], i] for i in range(self.body[0][1] + 1, XSIZE)]
+        if direction == S_LEFT:
+            line = [[self.body[0][0], i] for i in range(0, self.body[0][1])]
 
-    def if_tail_ahead(self, out1, out2):
-        return if_then_else(self.sense_tail_ahead, out1, out2)
+        return any([i for i in line if i in self.food])
+
+    def if_food_up(self, out1, out2):
+        cond = partial(self.sense_food_in_line, S_UP)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_food_down(self, out1, out2):
+        cond = partial(self.sense_food_in_line, S_DOWN)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_food_left(self, out1, out2):
+        cond = partial(self.sense_food_in_line, S_LEFT)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_food_right(self, out1, out2):
+        cond = partial(self.sense_food_in_line, S_RIGHT)
+        return partial(if_then_else, cond, out1, out2)
+
+    # adjacent square
+    def get_adjecent_square(self, square, direction):
+        return [square[0] + (direction == S_DOWN and 1) + (direction == S_UP and -1),
+                square[1] + (direction == S_LEFT and -1) + (direction == S_RIGHT and 1)]
+
+    # WALL
+    def sense_wall_in_adjecent_square(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
+                XSIZE - 1))
+
+    def if_wall_up(self, out1, out2):
+        cond = partial(self.sense_wall_in_adjecent_square, S_UP)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_wall_down(self, out1, out2):
+        cond = partial(self.sense_wall_in_adjecent_square, S_DOWN)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_wall_left(self, out1, out2):
+        cond = partial(self.sense_wall_in_adjecent_square, S_LEFT)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_wall_right(self, out1, out2):
+        cond = partial(self.sense_wall_in_adjecent_square, S_RIGHT)
+        return partial(if_then_else, cond, out1, out2)
+
+    # tail
+    def sense_tail_in_adjecent_square(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        return square in self.body
+
+    def if_tail_up(self, out1, out2):
+        cond = partial(self.sense_tail_in_adjecent_square, S_UP)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_tail_down(self, out1, out2):
+        cond = partial(self.sense_tail_in_adjecent_square, S_DOWN)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_tail_left(self, out1, out2):
+        cond = partial(self.sense_tail_in_adjecent_square, S_LEFT)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_tail_right(self, out1, out2):
+        cond = partial(self.sense_tail_in_adjecent_square, S_RIGHT)
+        return partial(if_then_else, cond, out1, out2)
 
 
 # This function places a food item in the environment
@@ -186,7 +269,7 @@ def displayStrategyRun(individual):
 
     print collided
     print hitBounds
-    raw_input("Press to continue...")
+    # raw_input("Press to continue...")
 
     return snake.score,
 
@@ -204,6 +287,7 @@ def runGame(routine):
     snake._reset()
     food = placeFood(snake)
     timer = 0
+    elapsed = 0
     while not snake.snakeHasCollided() and not timer == XSIZE * YSIZE:
 
         ## EXECUTE THE SNAKE'S BEHAVIOUR HERE ##
@@ -220,67 +304,83 @@ def runGame(routine):
             timer += 1  # timesteps since last eaten
 
         totalScore += snake.score
-
-    return totalScore,
+        elapsed += 1
+    return snake.score, elapsed
 
 
 def main():
     global snake
     global pset
 
-    NUMBER_OF_RUNS = 2
-    POPULATION_SIZE = 200
-    MATE_RATE = 0.5
-    MUTATION_RATE = 0.1
-    GENERATIONS = 10
-
-    logs = []
-
-    for i in range(NUMBER_OF_RUNS):
-        pop = toolbox.population(n=POPULATION_SIZE)
-        hof = tools.HallOfFame(1)
-
-        stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
-        stats_size = tools.Statistics(lambda ind: ind.height)
-        stats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
-        stats.register("avg", numpy.mean)
-        stats.register("std", numpy.std)
-        stats.register("min", numpy.min)
-        stats.register("max", numpy.max)
-
-        sm, log = algorithms.eaSimple(pop, toolbox, MATE_RATE, MUTATION_RATE, GENERATIONS, stats, halloffame=hof,
-                                      verbose=True)
-
-        print 'RUN', i
-
-        logs.append(log)
-
+    # i = toolbox.individual()
+    # i = gp.PrimitiveTree.from_string('if_danger_down(changeDirectionRight, changeDirectionDown)))', pset)
+    # print i
+    # displayStrategyRun(i)
     #
-    # # displayStrategyRun(hof[0])
-    #
-    logs_statistics(logs)
+    # return
+
+    pop = toolbox.population(n=POPULATION_SIZE)
+    hof = tools.HallOfFame(1)
+
+    stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
+    stats_size = tools.Statistics(lambda ind: ind.height)
+    stats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
+    stats.register("avg", numpy.mean)
+    stats.register("std", numpy.std)
+    stats.register("min", numpy.min)
+    stats.register("max", numpy.max)
+
+    sm, log = algorithms.eaSimple(pop, toolbox, MATE_RATE, MUTATION_RATE, GENERATIONS, stats, halloffame=hof,
+                                  verbose=True)
 
     return pop, hof, stats, log
 
 
 ## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
-INIT_MIN_DEPTH = 1
-INIT_MAX_DEPTH = 5
+NUMBER_OF_RUNS = 1
+
+POPULATION_SIZE = 3000
+MATE_RATE = 0.6
+MUTATION_RATE = 0.1
+GENERATIONS = 500
+
+INIT_MIN_DEPTH = 3
+INIT_MAX_DEPTH = 10
 MUTATE_MIN_DEPTH = 0
 MUTATE_MAX_DEPTH = 2
-TOURNAMENT_SIZE = 10
+TOURNAMENT_SIZE = 7
+
+
+def nothing():
+    pass
+
 
 pset = gp.PrimitiveSet("MAIN", 0)
-pset.addPrimitive(snake.if_food_ahead, 2)
-pset.addPrimitive(snake.if_wall_ahead, 2)
-pset.addPrimitive(snake.if_tail_ahead, 2)
+# pset.addPrimitive(snake.if_food_ahead, 2)
+
+pset.addPrimitive(snake.if_food_up, 2)
+# pset.addPrimitive(snake.if_food_down, 2)
+pset.addPrimitive(snake.if_food_left, 2)
+# pset.addPrimitive(snake.if_food_right, 2)
+
+pset.addPrimitive(snake.if_wall_up, 2)
+pset.addPrimitive(snake.if_wall_down, 2)
+pset.addPrimitive(snake.if_wall_left, 2)
+pset.addPrimitive(snake.if_wall_right, 2)
+
+pset.addPrimitive(snake.if_tail_up, 2)
+pset.addPrimitive(snake.if_tail_down, 2)
+pset.addPrimitive(snake.if_tail_left, 2)
+pset.addPrimitive(snake.if_tail_right, 2)
+
 pset.addPrimitive(prog2, 2)
-pset.addPrimitive(prog3, 3)
+# pset.addPrimitive(prog3, 3)
 
 pset.addTerminal(snake.changeDirectionDown)
 pset.addTerminal(snake.changeDirectionLeft)
 pset.addTerminal(snake.changeDirectionRight)
 pset.addTerminal(snake.changeDirectionUp)
+pset.addTerminal(nothing)
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -299,16 +399,32 @@ def evalSnake(individual):
     # Transform the tree expression to functionnal Python code
     routine = gp.compile(individual, pset)
     # Run the generated routine
-    score = runGame(routine)
-    return score
+    score, elapsed = runGame(routine)
+    fitness = score
+    penalty = abs(snake.body[0][0] - snake.food[0][0]) + abs(snake.body[0][1] - snake.food[0][1])
+    if score == 0:
+        fitness = score - penalty
+    if score < 10:
+        had = snake.body[0]
+        if snake.body[0][0] in [0, 13] or snake.body[0][1] in [0, 13]:
+            fitness -= 10
+        if snake.body[0] == snake.body[1]:
+            fitness -= 10
+
+    if score < 25:
+        if snake.body[0][0] in [0, 13] or snake.body[0][1] in [0, 13]:
+            fitness -= 5
+
+    return fitness,
 
 
 toolbox.register("evaluate", evalSnake)
 toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
 toolbox.register("mate", gp.cxOnePoint)
-toolbox.register("expr_mut", gp.genHalfAndHalf, min_=MUTATE_MIN_DEPTH, max_=MUTATE_MAX_DEPTH)
+toolbox.register("expr_mut", gp.genFull, min_=MUTATE_MIN_DEPTH, max_=MUTATE_MAX_DEPTH)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
+# Run in parallel
 from scoop import futures
 
 toolbox.register("map", futures.map)
@@ -316,17 +432,9 @@ toolbox.register("map", futures.map)
 
 ## THE FOLLOWING FUNCTIONS EVALUATE THE PERFORMANCE OF THE ALGORITHM
 
-def analyse(logs, hof):
-    statistics = logs_statistics(logs)
-
-
-def plotstuff(log):
-    gen = log.select("gen")
-    fit_mins = log.chapters["fitness"].select("avg")
-    size_avgs = log.chapters["size"].select("avg")
-
+def plotstuff(gen, fit_avg, size_avgs):
     fig, ax1 = plt.subplots()
-    line1 = ax1.plot(gen, fit_mins, "b-", label="Average Fitness")
+    line1 = ax1.plot(gen, fit_avg, "b-", label="Average Fitness")
     ax1.set_xlabel("Generation")
     ax1.set_ylabel("Fitness", color="b")
     for tl in ax1.get_yticklabels():
@@ -345,8 +453,21 @@ def plotstuff(log):
     plt.show()
 
 
+def create_results_dir():
+    import os
+
+    # create directory to store results
+    dir = 'res'
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+    return dir
+
+
 def logs_statistics(logs):
     from pandas import DataFrame
+    import os
+
+    dir = create_results_dir()
 
     # Convert logbook to numpy arrays
     log_gen = numpy.array([log.select('gen') for log in logs])
@@ -375,57 +496,128 @@ def logs_statistics(logs):
     data_dic['size_min'] = numpy.min(log_size_min, 0)
     data_dic['size_std'] = numpy.sqrt(numpy.sum(log_size_std ** 2, 0))  # pooled std
 
+    # create data frame and write to csv
     df = DataFrame(data_dic)
 
     cols = ['gen', 'nevals', 'fitness_avg', 'fitness_max', 'fitness_min', 'fitness_std', 'size_avg', 'size_max',
             'size_min', 'size_std']
-    df.to_csv('eggs.csv', sep=',', columns=cols)
+    df.to_csv(os.path.join(dir, 'summary.csv'), sep=',', columns=cols)
 
-    df[['gen', 'fitness_avg', 'fitness_std']].plot(x='gen', yerr='fitness_std')
-    plt.show(kind='box')
+    # df[['gen', 'fitness_avg', 'fitness_std']].plot(x='gen', yerr='fitness_std')
+    # plt.show(kind='box')
+    # plt.savefig(os.path.join(dir, 'summary_fitness.png'))
 
-    print df
-    return
-    keys = ['gen', 'nevals'] + [j + '_' + i for j in sorted(logs[0].chapters.keys())
-                                for i in sorted(logs[0].chapters['fitness'][0].keys())]
+    plotstuff(df.ix[:, 'gen'], df.ix[:, 'fitness_avg'], df.ix[:, 'size_avg'])
 
-    values = [{k: 0 for k in keys} for j in range(len(logs[0]))]
+    return df
 
-    for log in logs:
-        for i in range(len(log)):
 
-            values[i]['gen'] += log[i]['gen']
-            values[i]['nevals'] += log[i]['nevals']
+def draw_individual(expr):
+    dir = create_results_dir()
 
-            for key in log.chapters.keys():
-                for subkey in log.chapters[key][i].keys():
-                    if subkey is 'std':
-                        values[i][key + '_' + subkey] += log.chapters[key][i][subkey] ** 2
-                    elif subkey is 'max':
-                        values[i][key + '_' + subkey] = max(log.chapters[key][i][subkey], values[i][key + '_' + subkey])
-                    elif subkey is 'min':
-                        values[i][key + '_' + subkey] = min(log.chapters[key][i][subkey], values[i][key + '_' + subkey])
-                    else:
-                        values[i][key + '_' + subkey] += log.chapters[key][i][subkey]
+    nodes, edges, labels = gp.graph(expr)
 
-    for dic in values:
-        for key in dic.keys():
-            if key is 'std':
-                dic[key] = numpy.sqrt(len(logs) / len(logs))
-            elif key is 'max':
-                pass
-            elif key is 'min':
-                pass
-            else:
-                dic[key] /= len(logs)
+    ### Graphviz Section ###
+    import pygraphviz as pgv
 
-    with open('eggs.csv', 'wb') as csvfile:
-        writer = csv.DictWriter(csvfile, delimiter=',', fieldnames=keys)
-        writer.writeheader()
-        writer.writerows(values)
+    g = pgv.AGraph()
+    g.add_nodes_from(nodes)
 
-    return values
+    for i in nodes:
+        n = g.get_node(i)
+        n.attr["label"] = labels[i]
+
+    g.add_edges_from(edges)
+    g.layout(prog="dot")
+
+    g.draw(dir + "/tree.pdf")
+
+    import matplotlib.pyplot as plt
+    import networkx as nx
+    from networkx.drawing.nx_agraph import graphviz_layout
+
+    g = nx.Graph()
+    g.add_nodes_from(nodes)
+    g.add_edges_from(edges)
+    pos = graphviz_layout(g, prog="dot")
+
+    nx.draw_networkx_nodes(g, pos)
+    nx.draw_networkx_edges(g, pos)
+    nx.draw_networkx_labels(g, pos, labels)
+    plt.show()
+
+
+def run_best_individual(individual):
+    while True:
+        print displayStrategyRun(individual)[0]
+        a = raw_input("Press to continue...")
+
+        if a is 'y':
+            break
+
+
+def best_statistics(best_fitnesses, best_fitness):
+    dir = create_results_dir()
+
+    data = numpy.array(best_fitnesses)
+    numpy.savetxt(dir + '/best_fitnesses.csv', data, delimiter=',')
+
+    with open(dir + '/best_fitness', 'w') as f:
+        f.write(str(best_fitness))
+
+
+def save_parameters():
+    dir = create_results_dir()
+
+    dic = dict(NUMBER_OF_RUNS=NUMBER_OF_RUNS,
+               INIT_MIN_DEPTH=INIT_MIN_DEPTH,
+               INIT_MAX_DEPTH=INIT_MAX_DEPTH,
+               MUTATE_MIN_DEPTH=MUTATE_MIN_DEPTH,
+               MUTATE_MAX_DEPTH=MUTATE_MAX_DEPTH,
+               TOURNAMENT_SIZE=TOURNAMENT_SIZE,
+               POPULATION_SIZE=POPULATION_SIZE,
+               MATE_RATE=MATE_RATE,
+               MUTATION_RATE=MUTATION_RATE,
+               GENERATIONS=GENERATIONS
+               )
+
+    with open(dir + '/parameters', 'w') as f:
+        for i, j in dic.iteritems():
+            f.write(i + ' = ' + str(j) + '\n')
 
 
 if __name__ == '__main__':
-    main()
+
+    logs = []
+    best_individuals_fitness = []
+    best_individual = None
+
+    for i in range(NUMBER_OF_RUNS):
+        print 'RUN', i
+
+        pop, hof, stats, log = main()
+
+        logs.append(log)
+
+        current_best_individual = hof[0]
+        best_individuals_fitness.append(runGame(gp.compile(current_best_individual, pset))[0])
+
+        # evaluate best individuals for each run
+        if best_individual is None or best_individual.fitness.values[0] < current_best_individual.fitness.values[0]:
+            best_individual = current_best_individual
+
+    # evaluate best individual out of all runs
+    number_of_test_runs = 100
+    best_fitness = 0
+    for i in range(number_of_test_runs):
+        best_fitness += runGame(gp.compile(best_individual, pset))[0]
+    best_fitness /= number_of_test_runs
+
+    # output stats
+    draw_individual(best_individual)
+    logs_statistics(logs)
+    best_statistics(best_individuals_fitness, best_fitness)
+    save_parameters()
+    run_best_individual(best_individual)
+
+    print best_individual
