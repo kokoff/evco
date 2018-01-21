@@ -104,6 +104,19 @@ class SnakePlayer(list):
         if self.body[0] in self.body[1:]: self.hit = True
         return (self.hit)
 
+    #basic sensing
+    def if_food_ahead(self, out1, out2):
+        cond = partial(self.sense_food_in_line, self.direction)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_wall_ahead(self, out1, out2):
+        cond = partial(self.sense_wall_in_adjecent_square, self.direction)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_tail_ahead(self, out1, out2):
+        cond = partial(self.sense_tail_in_adjecent_square, self.direction)
+        return partial(if_then_else, cond, out1, out2)
+
     # food in line
     def sense_food_in_line(self, direction):
         if direction == S_DOWN:
@@ -174,10 +187,33 @@ class SnakePlayer(list):
         cond4 = partial(self.sense_wall_in_adjecent_square, S_RIGHT)
         return partial(cases, cond1, cond2, cond3, cond4, out1, out2, out3, out4, out5)
 
+    # wall in two squares
+    def sense_wall_in_two_squares(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        square = self.get_adjecent_square(square, direction)
+        return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
+                XSIZE - 1))
+
+    def if_wall_two_up(self, out1, out2):
+        cond = partial(self.sense_wall_in_two_squares, S_UP)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_wall_two_down(self, out1, out2):
+        cond = partial(self.sense_wall_in_two_squares, S_DOWN)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_wall_two_left(self, out1, out2):
+        cond = partial(self.sense_wall_in_two_squares, S_LEFT)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_wall_two_right(self, out1, out2):
+        cond = partial(self.sense_wall_in_two_squares, S_RIGHT)
+        return partial(if_then_else, cond, out1, out2)
+
     # tail
     def sense_tail_in_adjecent_square(self, direction):
         square = self.get_adjecent_square(self.body[0], direction)
-        return square in self.body
+        return square in self.body[2:]
 
     def if_tail_up(self, out1, out2):
         cond = partial(self.sense_tail_in_adjecent_square, S_UP)
@@ -201,6 +237,49 @@ class SnakePlayer(list):
         cond3 = partial(self.sense_tail_in_adjecent_square, S_LEFT)
         cond4 = partial(self.sense_tail_in_adjecent_square, S_RIGHT)
         return partial(cases, cond1, cond2, cond3, cond4, out1, out2, out3, out4, out5)
+
+    # neck
+    def sense_neck_in_adjecent_square(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        return square in [self.body[1]]
+
+    def if_neck_up(self, out1, out2):
+        cond = partial(self.sense_neck_in_adjecent_square, S_UP)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_neck_down(self, out1, out2):
+        cond = partial(self.sense_neck_in_adjecent_square, S_DOWN)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_neck_left(self, out1, out2):
+        cond = partial(self.sense_neck_in_adjecent_square, S_LEFT)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_neck_right(self, out1, out2):
+        cond = partial(self.sense_neck_in_adjecent_square, S_RIGHT)
+        return partial(if_then_else, cond, out1, out2)
+
+    # danger
+    def sense_danger_in_adjecent_square(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
+                XSIZE - 1)) or square in self.body[2:]
+
+    def if_danger_up(self, out1, out2):
+        cond = partial(self.sense_danger_in_adjecent_square, S_UP)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_danger_down(self, out1, out2):
+        cond = partial(self.sense_danger_in_adjecent_square, S_DOWN)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_danger_left(self, out1, out2):
+        cond = partial(self.sense_danger_in_adjecent_square, S_LEFT)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_danger_right(self, out1, out2):
+        cond = partial(self.sense_danger_in_adjecent_square, S_RIGHT)
+        return partial(if_then_else, cond, out1, out2)
 
     # # direction
     # def is_direction(self, direction):
@@ -335,7 +414,6 @@ class SnakePlayer(list):
     # Safety
 
 
-
 # This function places a food item in the environment
 def placeFood(snake):
     food = []
@@ -460,7 +538,8 @@ def main():
     stats_steps = tools.Statistics(lambda ind: ind.steps)
     stats_size = tools.Statistics(lambda ind: ind.height)
     stats_size_len = tools.Statistics(lambda ind: len(ind))
-    stats = tools.MultiStatistics(fitness=stats_fit, score=stats_score, steps=stats_steps, size=stats_size, size_len=stats_size_len)
+    stats = tools.MultiStatistics(fitness=stats_fit, score=stats_score, steps=stats_steps, size=stats_size,
+                                  size_len=stats_size_len)
     stats.register("avg", numpy.mean)
     stats.register("std", numpy.std)
     stats.register("min", numpy.min)
@@ -473,6 +552,8 @@ def main():
 
 
 ## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
+# numpy.random.seed(17)
+
 NUMBER_OF_RUNS = 1
 
 POPULATION_SIZE = 600
@@ -480,12 +561,15 @@ MATE_RATE = 0.6
 MUTATION_RATE = 0.1
 GENERATIONS = 400
 
-INIT_MIN_DEPTH = 0
-INIT_MAX_DEPTH = 2
+INIT_MIN_DEPTH = 2
+INIT_MAX_DEPTH = 9
 MUTATE_MIN_DEPTH = 0
 MUTATE_MAX_DEPTH = 2
 TOURNAMENT_SIZE = 7
 PARSIMONY_SIZE = 1.2
+
+TREE_MAX_NODES = 150
+TREE_MAX_DEPTH = 20
 
 
 def nothing():
@@ -499,6 +583,11 @@ pset.addPrimitive(snake.if_food_down, 2)
 pset.addPrimitive(snake.if_food_left, 2)
 pset.addPrimitive(snake.if_food_right, 2)
 
+# pset.addPrimitive(snake.if_neck_up, 2)
+# pset.addPrimitive(snake.if_neck_down, 2)
+# pset.addPrimitive(snake.if_neck_left, 2)
+# pset.addPrimitive(snake.if_neck_right, 2)
+
 pset.addPrimitive(snake.if_wall_up, 2)
 pset.addPrimitive(snake.if_wall_down, 2)
 pset.addPrimitive(snake.if_wall_left, 2)
@@ -509,34 +598,10 @@ pset.addPrimitive(snake.if_tail_down, 2)
 pset.addPrimitive(snake.if_tail_left, 2)
 pset.addPrimitive(snake.if_tail_right, 2)
 
-# pset.addPrimitive(snake.if_food, 5)
-# pset.addPrimitive(snake.if_wall, 5)
-# pset.addPrimitive(snake.if_tail, 5)
-# pset.addPrimitive(snake.if_moving, 5)
-
-
-# # Relative
-# pset.addPrimitive(snake.if_food_ahead, 2)
-# pset.addPrimitive(snake.if_food_behind, 2)
-# pset.addPrimitive(snake.if_food_on_left, 2)
-# pset.addPrimitive(snake.if_food_on_right, 2)
-#
-# pset.addPrimitive(snake.if_wall_ahead, 2)
-# pset.addPrimitive(snake.if_wall_behind, 2)
-# pset.addPrimitive(snake.if_wall_on_left, 2)
-# pset.addPrimitive(snake.if_wall_on_right, 2)
-#
-# pset.addPrimitive(snake.if_tail_ahead, 2)
-# pset.addPrimitive(snake.if_tail_behind, 2)
-# pset.addPrimitive(snake.if_tail_on_left, 2)
-# pset.addPrimitive(snake.if_tail_on_right, 2)
-#
-# # Directions
-# pset.addPrimitive(snake.if_moving_up, 2)
-# pset.addPrimitive(snake.if_moving_down, 2)
-# pset.addPrimitive(snake.if_moving_left, 2)
-# pset.addPrimitive(snake.if_moving_right, 2)
-
+# pset.addPrimitive(snake.if_wall_two_up, 2)
+# pset.addPrimitive(snake.if_wall_two_down, 2)
+# pset.addPrimitive(snake.if_wall_two_left, 2)
+# pset.addPrimitive(snake.if_wall_two_right, 2)
 
 pset.addPrimitive(prog2, 2)
 # pset.addPrimitive(prog3, 3)
@@ -583,39 +648,26 @@ def evalSnake(individual):
     if timedOut:
         fitness -= XSIZE * YSIZE
 
-    # if score == 0:
-    #     penalty = abs(snake.body[0][0] - snake.food[0][0]) + abs(snake.body[0][1] - snake.food[0][1])
-    #     fitness -= penalty
-    # if score < 10:
-    #     had = snake.body[0]
-    #     if snake.body[0][0] in [0, 13] or snake.body[0][1] in [0, 13]:
-    #         fitness -= 10
-    #     if snake.body[0] == snake.body[1]:
-    #         fitness -= 10
-    #
-    # if score < 25:
-    #     if snake.body[0][0] in [0, 13] or snake.body[0][1] in [0, 13]:
-    #         fitness -= 5
-
     return fitness,
 
 
 toolbox.register("evaluate", evalSnake)
-toolbox.register("select", tools.selDoubleTournament, fitness_size=TOURNAMENT_SIZE, parsimony_size=PARSIMONY_SIZE, fitness_first=True)
+toolbox.register("select", tools.selDoubleTournament, fitness_size=TOURNAMENT_SIZE, parsimony_size=PARSIMONY_SIZE,
+                 fitness_first=True)
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=MUTATE_MIN_DEPTH, max_=MUTATE_MAX_DEPTH)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
-# toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=15))
-# toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=15))
+# toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=TREE_MAX_DEPTH))
+# toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=TREE_MAX_DEPTH))
 
-toolbox.decorate("mate", gp.staticLimit(key=len, max_value=50))
-toolbox.decorate("mutate", gp.staticLimit(key=len, max_value=50))
+toolbox.decorate("mate", gp.staticLimit(key=len, max_value=TREE_MAX_NODES))
+toolbox.decorate("mutate", gp.staticLimit(key=len, max_value=TREE_MAX_NODES))
 
 # Run in parallel
 from scoop import futures
-
 toolbox.register("map", futures.map)
+
 
 
 ## THE FOLLOWING FUNCTIONS EVALUATE THE PERFORMANCE OF THE ALGORITHM
