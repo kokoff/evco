@@ -12,12 +12,10 @@ import operator
 from functools import partial
 import numpy
 
-## Functions which execute their arguments
-from pandas._libs.hashtable import na_sentinel
-
 from matplotlib import pyplot as plt
 
 
+# Helper functions
 def progn(*args):
     for arg in args:
         arg()
@@ -36,19 +34,6 @@ def if_then_else(condition, out1, out2):
         out1()
     else:
         out2()
-
-
-def cases(cond1, cond2, cond3, cond4, out1, out2, out3, out4, out5):
-    if cond1():
-        out1()
-    elif cond2():
-        out2()
-    elif cond3():
-        out3()
-    elif cond4():
-        out4()
-    else:
-        out5()
 
 
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0, 1, 2, 3
@@ -79,6 +64,25 @@ class SnakePlayer(list):
         self.ahead = [self.body[0][0] + (self.direction == S_DOWN and 1) + (self.direction == S_UP and -1),
                       self.body[0][1] + (self.direction == S_LEFT and -1) + (self.direction == S_RIGHT and 1)]
 
+    def getLeftLocation(self):
+        return [self.body[0][0] + (self.direction == S_LEFT and 1) + (self.direction == S_RIGHT and -1),
+                self.body[0][1] + (self.direction == S_UP and -1) + (self.direction == S_DOWN and 1)]
+
+    def getRightLocation(self):
+        return [self.body[0][0] + (self.direction == S_RIGHT and 1) + (self.direction == S_LEFT and -1),
+                self.body[0][1] + (self.direction == S_DOWN and -1) + (self.direction == S_UP and 1)]
+
+    def get_ahead_direction(self):
+        return self.direction
+
+    def get_left_direction(self):
+        dic = {S_UP: S_LEFT, S_DOWN: S_RIGHT, S_LEFT: S_DOWN, S_RIGHT: S_UP}
+        return dic[self.direction]
+
+    def get_right_direction(self):
+        dic = {S_UP: S_RIGHT, S_DOWN: S_LEFT, S_LEFT: S_UP, S_RIGHT: S_DOWN}
+        return dic[self.direction]
+
     def updatePosition(self):
         self.getAheadLocation()
         self.body.insert(0, self.ahead)
@@ -97,6 +101,9 @@ class SnakePlayer(list):
     def changeDirectionLeft(self):
         self.direction = S_LEFT
 
+    def doNothing(self):
+        pass
+
     def snakeHasCollided(self):
         self.hit = False
         if self.body[0][0] == 0 or self.body[0][0] == (YSIZE - 1) or self.body[0][1] == 0 or self.body[0][1] == (
@@ -104,20 +111,29 @@ class SnakePlayer(list):
         if self.body[0] in self.body[1:]: self.hit = True
         return (self.hit)
 
-    #basic sensing
-    def if_food_ahead(self, out1, out2):
-        cond = partial(self.sense_food_in_line, self.direction)
-        return partial(if_then_else, cond, out1, out2)
+    # basic sensing
+    def sense_wall_in_square(self, square):
+        return square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (XSIZE - 1)
 
-    def if_wall_ahead(self, out1, out2):
-        cond = partial(self.sense_wall_in_adjecent_square, self.direction)
-        return partial(if_then_else, cond, out1, out2)
+    def sense_tail_in_square(self, square):
+        return square in self.body[2:]
 
-    def if_tail_ahead(self, out1, out2):
-        cond = partial(self.sense_tail_in_adjecent_square, self.direction)
-        return partial(if_then_else, cond, out1, out2)
+    def get_adjecent_square(self, square, direction):
+        return [square[0] + (direction == S_DOWN and 1) + (direction == S_UP and -1),
+                square[1] + (direction == S_LEFT and -1) + (direction == S_RIGHT and 1)]
 
-    # food in line
+    def sense_wall_in_adjecent_square(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        return self.sense_wall_in_square(square)
+
+    def sense_tail_in_adjecent_square(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        return self.sense_tail_in_square(square)
+
+    def sense_danger_in_adjecent_square(self, direction):
+        square = self.get_adjecent_square(self.body[0], direction)
+        return self.sense_wall_in_square(square) or self.sense_tail_in_square(square)
+
     def sense_food_in_line(self, direction):
         if direction == S_DOWN:
             line = [[i, self.body[0][1]] for i in range(self.body[0][0] + 1, YSIZE)]
@@ -130,6 +146,98 @@ class SnakePlayer(list):
 
         return any([i for i in line if i in self.food])
 
+    # RELATIVE TO SNAKE SENSING-----------------------------------------------------------------------------
+
+    # food
+    def sense_food_ahead(self):
+        return self.sense_food_in_line(self.direction)
+
+    def sense_food_on_left(self):
+        return self.sense_food_in_line(self.get_left_direction())
+
+    def sense_food_on_right(self):
+        return self.sense_food_in_line(self.get_right_direction())
+
+    def if_food_ahead(self, out1, out2):
+        return partial(if_then_else, self.sense_food_ahead, out1, out2)
+
+    def if_food_on_left(self, out1, out2):
+        return partial(if_then_else, self.sense_food_on_left, out1, out2)
+
+    def if_food_on_right(self, out1, out2):
+        return partial(if_then_else, self.sense_food_on_right, out1, out2)
+
+    # wall
+    def sense_wall_ahead(self):
+        direction = self.get_ahead_direction()
+        return self.sense_wall_in_adjecent_square(direction)
+
+    def sense_wall_on_left(self):
+        direction = self.get_left_direction()
+        return self.sense_wall_in_adjecent_square(direction)
+
+    def sense_wall_on_right(self):
+        direction = self.get_right_direction()
+        return self.sense_wall_in_adjecent_square(direction)
+
+    def if_wall_ahead(self, out1, out2):
+        return partial(if_then_else, self.sense_wall_ahead, out1, out2)
+
+    def if_wall_on_left(self, out1, out2):
+        return partial(if_then_else, self.sense_wall_on_left, out1, out2)
+
+    def if_wall_on_right(self, out1, out2):
+        return partial(if_then_else, self.sense_wall_on_right, out1, out2)
+
+    # tail
+    def sense_tail_ahead(self):
+        direction = self.get_ahead_direction()
+        return self.sense_tail_in_adjecent_square(direction)
+
+    def sense_tail_on_left(self):
+        direction = self.get_left_direction()
+        return self.sense_tail_in_adjecent_square(direction)
+
+    def sense_tail_on_right(self):
+        direction = self.get_right_direction()
+        return self.sense_tail_in_adjecent_square(direction)
+
+    def if_tail_ahead(self, out1, out2):
+        return partial(if_then_else, self.sense_tail_ahead, out1, out2)
+
+    def if_tail_on_left(self, out1, out2):
+        return partial(if_then_else, self.sense_tail_on_left, out1, out2)
+
+    def if_tail_on_right(self, out1, out2):
+        return partial(if_then_else, self.sense_tail_on_right, out1, out2)
+
+    # danger
+    def sense_danger_ahead(self):
+        self.getAheadLocation()
+        return self.sense_wall_in_square(self.ahead) or self.sense_tail_in_square(self.ahead)
+
+    def sense_danger_on_left(self):
+        square = self.getLeftLocation()
+        return self.sense_wall_in_square(square) or self.sense_tail_in_square(square)
+
+    def sense_danger_on_right(self):
+        square = self.getRightLocation()
+        return self.sense_wall_in_square(square) or self.sense_tail_in_square(square)
+
+    def if_danger_ahead(self, out1, out2):
+        return partial(if_then_else, self.sense_danger_ahead, out1, out2)
+
+    def if_danger_on_left(self, out1, out2):
+        return partial(if_then_else, self.sense_danger_on_left, out1, out2)
+
+    def if_danger_on_right(self, out1, out2):
+        return partial(if_then_else, self.sense_danger_on_right, out1, out2)
+
+    # ------------------------------------------------------------------------------------------------------
+
+    # RELATIVE TO GRID SENSING------------------------------------------------------------------------------
+
+    # food
     def if_food_up(self, out1, out2):
         cond = partial(self.sense_food_in_line, S_UP)
         return partial(if_then_else, cond, out1, out2)
@@ -146,24 +254,7 @@ class SnakePlayer(list):
         cond = partial(self.sense_food_in_line, S_RIGHT)
         return partial(if_then_else, cond, out1, out2)
 
-    def if_food(self, out1, out2, out3, out4, out5):
-        cond1 = partial(self.sense_food_in_line, S_UP)
-        cond2 = partial(self.sense_food_in_line, S_DOWN)
-        cond3 = partial(self.sense_food_in_line, S_LEFT)
-        cond4 = partial(self.sense_food_in_line, S_RIGHT)
-        return partial(cases, cond1, cond2, cond3, cond4, out1, out2, out3, out4, out5)
-
-    # adjacent square
-    def get_adjecent_square(self, square, direction):
-        return [square[0] + (direction == S_DOWN and 1) + (direction == S_UP and -1),
-                square[1] + (direction == S_LEFT and -1) + (direction == S_RIGHT and 1)]
-
-    # WALL
-    def sense_wall_in_adjecent_square(self, direction):
-        square = self.get_adjecent_square(self.body[0], direction)
-        return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
-                XSIZE - 1))
-
+    # wall
     def if_wall_up(self, out1, out2):
         cond = partial(self.sense_wall_in_adjecent_square, S_UP)
         return partial(if_then_else, cond, out1, out2)
@@ -180,41 +271,30 @@ class SnakePlayer(list):
         cond = partial(self.sense_wall_in_adjecent_square, S_RIGHT)
         return partial(if_then_else, cond, out1, out2)
 
-    def if_wall(self, out1, out2, out3, out4, out5):
-        cond1 = partial(self.sense_wall_in_adjecent_square, S_UP)
-        cond2 = partial(self.sense_wall_in_adjecent_square, S_DOWN)
-        cond3 = partial(self.sense_wall_in_adjecent_square, S_LEFT)
-        cond4 = partial(self.sense_wall_in_adjecent_square, S_RIGHT)
-        return partial(cases, cond1, cond2, cond3, cond4, out1, out2, out3, out4, out5)
-
-    # wall in two squares
-    def sense_wall_in_two_squares(self, direction):
-        square = self.get_adjecent_square(self.body[0], direction)
-        square = self.get_adjecent_square(square, direction)
-        return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
-                XSIZE - 1))
-
-    def if_wall_two_up(self, out1, out2):
-        cond = partial(self.sense_wall_in_two_squares, S_UP)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_wall_two_down(self, out1, out2):
-        cond = partial(self.sense_wall_in_two_squares, S_DOWN)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_wall_two_left(self, out1, out2):
-        cond = partial(self.sense_wall_in_two_squares, S_LEFT)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_wall_two_right(self, out1, out2):
-        cond = partial(self.sense_wall_in_two_squares, S_RIGHT)
-        return partial(if_then_else, cond, out1, out2)
+    # # wall in two squares
+    # def sense_wall_in_two_squares(self, direction):
+    #     square = self.get_adjecent_square(self.body[0], direction)
+    #     square = self.get_adjecent_square(square, direction)
+    #     return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
+    #             XSIZE - 1))
+    #
+    # def if_wall_two_up(self, out1, out2):
+    #     cond = partial(self.sense_wall_in_two_squares, S_UP)
+    #     return partial(if_then_else, cond, out1, out2)
+    #
+    # def if_wall_two_down(self, out1, out2):
+    #     cond = partial(self.sense_wall_in_two_squares, S_DOWN)
+    #     return partial(if_then_else, cond, out1, out2)
+    #
+    # def if_wall_two_left(self, out1, out2):
+    #     cond = partial(self.sense_wall_in_two_squares, S_LEFT)
+    #     return partial(if_then_else, cond, out1, out2)
+    #
+    # def if_wall_two_right(self, out1, out2):
+    #     cond = partial(self.sense_wall_in_two_squares, S_RIGHT)
+    #     return partial(if_then_else, cond, out1, out2)
 
     # tail
-    def sense_tail_in_adjecent_square(self, direction):
-        square = self.get_adjecent_square(self.body[0], direction)
-        return square in self.body[2:]
-
     def if_tail_up(self, out1, out2):
         cond = partial(self.sense_tail_in_adjecent_square, S_UP)
         return partial(if_then_else, cond, out1, out2)
@@ -231,39 +311,28 @@ class SnakePlayer(list):
         cond = partial(self.sense_tail_in_adjecent_square, S_RIGHT)
         return partial(if_then_else, cond, out1, out2)
 
-    def if_tail(self, out1, out2, out3, out4, out5):
-        cond1 = partial(self.sense_tail_in_adjecent_square, S_UP)
-        cond2 = partial(self.sense_tail_in_adjecent_square, S_DOWN)
-        cond3 = partial(self.sense_tail_in_adjecent_square, S_LEFT)
-        cond4 = partial(self.sense_tail_in_adjecent_square, S_RIGHT)
-        return partial(cases, cond1, cond2, cond3, cond4, out1, out2, out3, out4, out5)
-
-    # neck
-    def sense_neck_in_adjecent_square(self, direction):
-        square = self.get_adjecent_square(self.body[0], direction)
-        return square in [self.body[1]]
-
-    def if_neck_up(self, out1, out2):
-        cond = partial(self.sense_neck_in_adjecent_square, S_UP)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_neck_down(self, out1, out2):
-        cond = partial(self.sense_neck_in_adjecent_square, S_DOWN)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_neck_left(self, out1, out2):
-        cond = partial(self.sense_neck_in_adjecent_square, S_LEFT)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_neck_right(self, out1, out2):
-        cond = partial(self.sense_neck_in_adjecent_square, S_RIGHT)
-        return partial(if_then_else, cond, out1, out2)
+    # # neck
+    # def sense_neck_in_adjecent_square(self, direction):
+    #     square = self.get_adjecent_square(self.body[0], direction)
+    #     return square in [self.body[1]]
+    #
+    # def if_neck_up(self, out1, out2):
+    #     cond = partial(self.sense_neck_in_adjecent_square, S_UP)
+    #     return partial(if_then_else, cond, out1, out2)
+    #
+    # def if_neck_down(self, out1, out2):
+    #     cond = partial(self.sense_neck_in_adjecent_square, S_DOWN)
+    #     return partial(if_then_else, cond, out1, out2)
+    #
+    # def if_neck_left(self, out1, out2):
+    #     cond = partial(self.sense_neck_in_adjecent_square, S_LEFT)
+    #     return partial(if_then_else, cond, out1, out2)
+    #
+    # def if_neck_right(self, out1, out2):
+    #     cond = partial(self.sense_neck_in_adjecent_square, S_RIGHT)
+    #     return partial(if_then_else, cond, out1, out2)
 
     # danger
-    def sense_danger_in_adjecent_square(self, direction):
-        square = self.get_adjecent_square(self.body[0], direction)
-        return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
-                XSIZE - 1)) or square in self.body[2:]
 
     def if_danger_up(self, out1, out2):
         cond = partial(self.sense_danger_in_adjecent_square, S_UP)
@@ -281,137 +350,28 @@ class SnakePlayer(list):
         cond = partial(self.sense_danger_in_adjecent_square, S_RIGHT)
         return partial(if_then_else, cond, out1, out2)
 
-    # # direction
-    # def is_direction(self, direction):
-    #     return self.direction == direction
-    #
-    # def if_moving_up(self, out1, out2):
-    #     cond = partial(self.is_direction, S_UP)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_moving_down(self, out1, out2):
-    #     cond = partial(self.is_direction, S_DOWN)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_moving_left(self, out1, out2):
-    #     cond = partial(self.is_direction, S_LEFT)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_moving_right(self, out1, out2):
-    #     cond = partial(self.is_direction, S_RIGHT)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_moving(self, out1, out2, out3, out4, out5):
-    #     cond1 = partial(self.is_direction, S_UP)
-    #     cond2 = partial(self.is_direction, S_DOWN)
-    #     cond3 = partial(self.is_direction, S_LEFT)
-    #     cond4 = partial(self.is_direction, S_RIGHT)
-    #     return partial(cases, cond1, cond2, cond3, cond4, out1, out2, out3, out4, out5)
+    # ------------------------------------------------------------------------------------------------------
 
-    # RELATIVE TO SNAKE OPERATIONS
-    # def get_ahead_direction(self):
-    #     return self.direction
-    #
-    # def get_behind_direction(self):
-    #     dic = {S_UP: S_DOWN, S_DOWN: S_UP, S_LEFT: S_RIGHT, S_RIGHT: S_LEFT}
-    #     return dic[self.direction]
-    #
-    # def get_left_direction(self):
-    #     dic = {S_UP: S_LEFT, S_DOWN: S_RIGHT, S_LEFT: S_DOWN, S_RIGHT: S_UP}
-    #     return dic[self.direction]
-    #
-    # def get_right_direction(self):
-    #     dic = {S_UP: S_RIGHT, S_DOWN: S_LEFT, S_LEFT: S_UP, S_RIGHT: S_DOWN}
-    #     return dic[self.direction]
-    #
-    # # Relative food
-    # def sense_food_ahead(self):
-    #     direction = self.get_ahead_direction()
-    #     return self.sense_food_in_line(direction)
-    #
-    # def sense_food_behind(self):
-    #     direction = self.get_behind_direction()
-    #     return self.sense_food_in_line(direction)
-    #
-    # def sense_food_on_left(self):
-    #     direction = self.get_left_direction()
-    #     return self.sense_food_in_line(direction)
-    #
-    # def sense_food_on_right(self):
-    #     direction = self.get_right_direction()
-    #     return self.sense_food_in_line(direction)
-    #
-    # def if_food_ahead(self, out1, out2):
-    #     return partial(if_then_else, self.sense_food_ahead, out1, out2)
-    #
-    # def if_food_behind(self, out1, out2):
-    #     return partial(if_then_else, self.sense_food_behind, out1, out2)
-    #
-    # def if_food_on_left(self, out1, out2):
-    #     return partial(if_then_else, self.sense_food_on_left, out1, out2)
-    #
-    # def if_food_on_right(self, out1, out2):
-    #     return partial(if_then_else, self.sense_food_on_right, out1, out2)
-    #
-    # # Relative Wall
-    # def sense_wall_ahead(self):
-    #     direction = self.get_ahead_direction()
-    #     return self.sense_wall_in_adjecent_square(direction)
-    #
-    # def sense_wall_behind(self):
-    #     direction = self.get_behind_direction()
-    #     return self.sense_wall_in_adjecent_square(direction)
-    #
-    # def sense_wall_on_left(self):
-    #     direction = self.get_left_direction()
-    #     return self.sense_wall_in_adjecent_square(direction)
-    #
-    # def sense_wall_on_right(self):
-    #     direction = self.get_right_direction()
-    #     return self.sense_wall_in_adjecent_square(direction)
-    #
-    # def if_wall_ahead(self, out1, out2):
-    #     return partial(if_then_else, self.sense_wall_ahead, out1, out2)
-    #
-    # def if_wall_behind(self, out1, out2):
-    #     return partial(if_then_else, self.sense_wall_behind, out1, out2)
-    #
-    # def if_wall_on_left(self, out1, out2):
-    #     return partial(if_then_else, self.sense_wall_on_left, out1, out2)
-    #
-    # def if_wall_on_right(self, out1, out2):
-    #     return partial(if_then_else, self.sense_wall_on_right, out1, out2)
-    #
-    # # Relative Tail
-    # def sense_tail_ahead(self):
-    #     direction = self.get_ahead_direction()
-    #     return self.sense_tail_in_adjecent_square(direction)
-    #
-    # def sense_tail_behind(self):
-    #     direction = self.get_behind_direction()
-    #     return self.sense_tail_in_adjecent_square(direction)
-    #
-    # def sense_tail_on_left(self):
-    #     direction = self.get_left_direction()
-    #     return self.sense_tail_in_adjecent_square(direction)
-    #
-    # def sense_tail_on_right(self):
-    #     direction = self.get_right_direction()
-    #     return self.sense_tail_in_adjecent_square(direction)
-    #
-    # def if_tail_ahead(self, out1, out2):
-    #     return partial(if_then_else, self.sense_tail_ahead, out1, out2)
-    #
-    # def if_tail_behind(self, out1, out2):
-    #     return partial(if_then_else, self.sense_tail_behind, out1, out2)
-    #
-    # def if_tail_on_left(self, out1, out2):
-    #     return partial(if_then_else, self.sense_tail_on_left, out1, out2)
-    #
-    # def if_tail_on_right(self, out1, out2):
-    #     return partial(if_then_else, self.sense_tail_on_right, out1, out2)
+    # DIRECTION OF TRAVEL SENSING------------------------------------------------------------------------------
+    def is_direction(self, direction):
+        return self.direction == direction
 
-    # Safety
+    def if_moving_up(self, out1, out2):
+        cond = partial(self.is_direction, S_UP)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_moving_down(self, out1, out2):
+        cond = partial(self.is_direction, S_DOWN)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_moving_left(self, out1, out2):
+        cond = partial(self.is_direction, S_LEFT)
+        return partial(if_then_else, cond, out1, out2)
+
+    def if_moving_right(self, out1, out2):
+        cond = partial(self.is_direction, S_RIGHT)
+        return partial(if_then_else, cond, out1, out2)
+    # ------------------------------------------------------------------------------------------------------
 
 
 # This function places a food item in the environment
@@ -552,9 +512,8 @@ def main():
 
 
 ## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
-# numpy.random.seed(17)
-
-NUMBER_OF_RUNS = 1
+# random.seed(42)
+NUMBER_OF_RUNS = 10
 
 POPULATION_SIZE = 600
 MATE_RATE = 0.6
@@ -563,7 +522,8 @@ GENERATIONS = 400
 
 INIT_MIN_DEPTH = 2
 INIT_MAX_DEPTH = 9
-MUTATE_MIN_DEPTH = 0
+LEAF_MATE_RATE = 0.1
+MUTATE_MIN_DEPTH = 1
 MUTATE_MAX_DEPTH = 2
 TOURNAMENT_SIZE = 7
 PARSIMONY_SIZE = 1.2
@@ -571,22 +531,12 @@ PARSIMONY_SIZE = 1.2
 TREE_MAX_NODES = 150
 TREE_MAX_DEPTH = 20
 
-
-def nothing():
-    pass
-
-
 pset = gp.PrimitiveSet("MAIN", 0)
-# Absolute
+
 pset.addPrimitive(snake.if_food_up, 2)
 pset.addPrimitive(snake.if_food_down, 2)
 pset.addPrimitive(snake.if_food_left, 2)
 pset.addPrimitive(snake.if_food_right, 2)
-
-# pset.addPrimitive(snake.if_neck_up, 2)
-# pset.addPrimitive(snake.if_neck_down, 2)
-# pset.addPrimitive(snake.if_neck_left, 2)
-# pset.addPrimitive(snake.if_neck_right, 2)
 
 pset.addPrimitive(snake.if_wall_up, 2)
 pset.addPrimitive(snake.if_wall_down, 2)
@@ -598,10 +548,22 @@ pset.addPrimitive(snake.if_tail_down, 2)
 pset.addPrimitive(snake.if_tail_left, 2)
 pset.addPrimitive(snake.if_tail_right, 2)
 
-# pset.addPrimitive(snake.if_wall_two_up, 2)
-# pset.addPrimitive(snake.if_wall_two_down, 2)
-# pset.addPrimitive(snake.if_wall_two_left, 2)
-# pset.addPrimitive(snake.if_wall_two_right, 2)
+# pset.addPrimitive(snake.if_food_ahead, 2)
+# pset.addPrimitive(snake.if_food_left, 2)
+# pset.addPrimitive(snake.if_food_right, 2)
+#
+# pset.addPrimitive(snake.if_wall_ahead, 2)
+# pset.addPrimitive(snake.if_wall_left, 2)
+# pset.addPrimitive(snake.if_wall_right, 2)
+#
+# pset.addPrimitive(snake.if_tail_ahead, 2)
+# pset.addPrimitive(snake.if_tail_left, 2)
+# pset.addPrimitive(snake.if_tail_right, 2)
+#
+# pset.addPrimitive(snake.if_moving_up, 2)
+# pset.addPrimitive(snake.if_moving_down, 2)
+# pset.addPrimitive(snake.if_moving_left, 2)
+# pset.addPrimitive(snake.if_moving_right, 2)
 
 pset.addPrimitive(prog2, 2)
 # pset.addPrimitive(prog3, 3)
@@ -610,7 +572,7 @@ pset.addTerminal(snake.changeDirectionDown)
 pset.addTerminal(snake.changeDirectionLeft)
 pset.addTerminal(snake.changeDirectionRight)
 pset.addTerminal(snake.changeDirectionUp)
-pset.addTerminal(nothing)
+pset.addTerminal(snake.doNothing)
 
 
 # Add attributes to PrimitiveTree so they can be used for statistics
@@ -641,6 +603,12 @@ def evalSnake(individual):
     # Run the generated routine
     score, elapsed, totalScore, timedOut = runGame(routine)
 
+    # score1, elapsed1, totalScore1, timedOut1 = runGame(routine)
+    #
+    # score = (score + score1) / 2.0
+    # elapsed = (elapsed + elapsed1) / 2.0
+    # timedOut = timedOut or timedOut1
+
     individual.score = score
     individual.steps = elapsed
 
@@ -654,20 +622,17 @@ def evalSnake(individual):
 toolbox.register("evaluate", evalSnake)
 toolbox.register("select", tools.selDoubleTournament, fitness_size=TOURNAMENT_SIZE, parsimony_size=PARSIMONY_SIZE,
                  fitness_first=True)
-toolbox.register("mate", gp.cxOnePoint)
+toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=LEAF_MATE_RATE)
 toolbox.register("expr_mut", gp.genFull, min_=MUTATE_MIN_DEPTH, max_=MUTATE_MAX_DEPTH)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
-
-# toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=TREE_MAX_DEPTH))
-# toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=TREE_MAX_DEPTH))
 
 toolbox.decorate("mate", gp.staticLimit(key=len, max_value=TREE_MAX_NODES))
 toolbox.decorate("mutate", gp.staticLimit(key=len, max_value=TREE_MAX_NODES))
 
 # Run in parallel
 from scoop import futures
-toolbox.register("map", futures.map)
 
+toolbox.register("map", futures.map)
 
 
 ## THE FOLLOWING FUNCTIONS EVALUATE THE PERFORMANCE OF THE ALGORITHM
@@ -827,7 +792,9 @@ def best_individual_statistics(best_individual):
     best_stats = {'fitness': [], 'score': [], 'steps': []}
 
     for i in range(number_of_test_runs):
+        random.seed(i)
         evalSnake(best_individual)
+        random.seed()
         best_stats['fitness'].append(best_individual.fitness.values[0])
         best_stats['score'].append(best_individual.score)
         best_stats['steps'].append(best_individual.steps)
@@ -849,7 +816,9 @@ def best_individuals_statistics(best_individuals):
 
     for i in range(len(best_individuals)):
         for j in range(number_of_test_runs):
+            random.seed(i)
             evalSnake(best_individual)
+            random.seed()
             best_stats['fitness'][i] += best_individual.fitness.values[0]
             best_stats['score'][i] += best_individual.score
             best_stats['steps'][i] += best_individual.steps
