@@ -12,8 +12,6 @@ import operator
 from functools import partial
 import numpy
 
-from matplotlib import pyplot as plt
-
 
 # Helper functions
 def progn(*args):
@@ -23,10 +21,6 @@ def progn(*args):
 
 def prog2(out1, out2):
     return partial(progn, out1, out2)
-
-
-def prog3(out1, out2, out3):
-    return partial(progn, out1, out2, out3)
 
 
 def if_then_else(condition, out1, out2):
@@ -211,28 +205,6 @@ class SnakePlayer(list):
     def if_tail_on_right(self, out1, out2):
         return partial(if_then_else, self.sense_tail_on_right, out1, out2)
 
-    # danger
-    def sense_danger_ahead(self):
-        self.getAheadLocation()
-        return self.sense_wall_in_square(self.ahead) or self.sense_tail_in_square(self.ahead)
-
-    def sense_danger_on_left(self):
-        square = self.getLeftLocation()
-        return self.sense_wall_in_square(square) or self.sense_tail_in_square(square)
-
-    def sense_danger_on_right(self):
-        square = self.getRightLocation()
-        return self.sense_wall_in_square(square) or self.sense_tail_in_square(square)
-
-    def if_danger_ahead(self, out1, out2):
-        return partial(if_then_else, self.sense_danger_ahead, out1, out2)
-
-    def if_danger_on_left(self, out1, out2):
-        return partial(if_then_else, self.sense_danger_on_left, out1, out2)
-
-    def if_danger_on_right(self, out1, out2):
-        return partial(if_then_else, self.sense_danger_on_right, out1, out2)
-
     # ------------------------------------------------------------------------------------------------------
 
     # RELATIVE TO GRID SENSING------------------------------------------------------------------------------
@@ -271,29 +243,6 @@ class SnakePlayer(list):
         cond = partial(self.sense_wall_in_adjecent_square, S_RIGHT)
         return partial(if_then_else, cond, out1, out2)
 
-    # # wall in two squares
-    # def sense_wall_in_two_squares(self, direction):
-    #     square = self.get_adjecent_square(self.body[0], direction)
-    #     square = self.get_adjecent_square(square, direction)
-    #     return (square[0] == 0 or square[0] == (YSIZE - 1) or square[1] == 0 or square[1] == (
-    #             XSIZE - 1))
-    #
-    # def if_wall_two_up(self, out1, out2):
-    #     cond = partial(self.sense_wall_in_two_squares, S_UP)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_wall_two_down(self, out1, out2):
-    #     cond = partial(self.sense_wall_in_two_squares, S_DOWN)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_wall_two_left(self, out1, out2):
-    #     cond = partial(self.sense_wall_in_two_squares, S_LEFT)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_wall_two_right(self, out1, out2):
-    #     cond = partial(self.sense_wall_in_two_squares, S_RIGHT)
-    #     return partial(if_then_else, cond, out1, out2)
-
     # tail
     def if_tail_up(self, out1, out2):
         cond = partial(self.sense_tail_in_adjecent_square, S_UP)
@@ -309,45 +258,6 @@ class SnakePlayer(list):
 
     def if_tail_right(self, out1, out2):
         cond = partial(self.sense_tail_in_adjecent_square, S_RIGHT)
-        return partial(if_then_else, cond, out1, out2)
-
-    # # neck
-    # def sense_neck_in_adjecent_square(self, direction):
-    #     square = self.get_adjecent_square(self.body[0], direction)
-    #     return square in [self.body[1]]
-    #
-    # def if_neck_up(self, out1, out2):
-    #     cond = partial(self.sense_neck_in_adjecent_square, S_UP)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_neck_down(self, out1, out2):
-    #     cond = partial(self.sense_neck_in_adjecent_square, S_DOWN)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_neck_left(self, out1, out2):
-    #     cond = partial(self.sense_neck_in_adjecent_square, S_LEFT)
-    #     return partial(if_then_else, cond, out1, out2)
-    #
-    # def if_neck_right(self, out1, out2):
-    #     cond = partial(self.sense_neck_in_adjecent_square, S_RIGHT)
-    #     return partial(if_then_else, cond, out1, out2)
-
-    # danger
-
-    def if_danger_up(self, out1, out2):
-        cond = partial(self.sense_danger_in_adjecent_square, S_UP)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_danger_down(self, out1, out2):
-        cond = partial(self.sense_danger_in_adjecent_square, S_DOWN)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_danger_left(self, out1, out2):
-        cond = partial(self.sense_danger_in_adjecent_square, S_LEFT)
-        return partial(if_then_else, cond, out1, out2)
-
-    def if_danger_right(self, out1, out2):
-        cond = partial(self.sense_danger_in_adjecent_square, S_RIGHT)
         return partial(if_then_else, cond, out1, out2)
 
     # ------------------------------------------------------------------------------------------------------
@@ -512,10 +422,8 @@ def main():
 
 
 ## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
-# random.seed(42)
-RES_DIR = 'res_eval'
-NUMBER_OF_TEST_RUNS = 100
 NUMBER_OF_RUNS = 20
+NUMBER_OF_TEST_RUNS = 100
 
 POPULATION_SIZE = 600
 MATE_RATE = 0.6
@@ -531,7 +439,6 @@ TOURNAMENT_SIZE = 7
 PARSIMONY_SIZE = 1.2
 
 TREE_MAX_NODES = 150
-TREE_MAX_DEPTH = 20
 
 pset = gp.PrimitiveSet("MAIN", 0)
 
@@ -568,7 +475,6 @@ pset.addPrimitive(snake.if_tail_right, 2)
 # pset.addPrimitive(snake.if_moving_right, 2)
 
 pset.addPrimitive(prog2, 2)
-# pset.addPrimitive(prog3, 3)
 
 pset.addTerminal(snake.changeDirectionDown)
 pset.addTerminal(snake.changeDirectionLeft)
@@ -605,18 +511,17 @@ def evalSnake(individual):
     # Run the generated routine
     score, elapsed, totalScore, timedOut = runGame(routine)
 
-    # score1, elapsed1, totalScore1, timedOut1 = runGame(routine)
-    #
-    # score = (score + score1) / 2.0
-    # elapsed = (elapsed + elapsed1) / 2.0
-    # timedOut = timedOut or timedOut1
-
+    # Save score and elapsed
     individual.score = score
     individual.steps = elapsed
 
+    # Multi objective evaluation
     fitness = score + elapsed
     if timedOut:
         fitness -= XSIZE * YSIZE
+
+    # Simple evaluation
+    # fitness = score
 
     return fitness,
 
@@ -639,164 +544,20 @@ toolbox.register("map", futures.map)
 
 ## THE FOLLOWING FUNCTIONS EVALUATE THE PERFORMANCE OF THE ALGORITHM
 
-def plotstuff(y, x1, x2, x1_lab, x2_lab):
-    fig, ax1 = plt.subplots()
-    line1 = ax1.plot(y, x1, "b-", label=x1_lab)
-    ax1.set_xlabel("Generation")
-    ax1.set_ylabel("Fitness", color="b")
-    for tl in ax1.get_yticklabels():
-        tl.set_color("b")
-
-    ax2 = ax1.twinx()
-    line2 = ax2.plot(y, x2, "r-", label=x2_lab)
-    ax2.set_ylabel("Size", color="r")
-    for tl in ax2.get_yticklabels():
-        tl.set_color("r")
-
-    lns = line1 + line2
-    labs = [l.get_label() for l in lns]
-    ax1.legend(lns, labs, loc="center right")
-
-    plt.show()
-
-
-def create_results_dir():
-    import os
-
-    # create directory to store results
-    dir = RES_DIR
-    if not os.path.exists(dir):
-        os.mkdir(dir)
-    return dir
-
-
-def logs_statistics(logs):
-    from pandas import DataFrame
-    import os
-
-    dir = create_results_dir()
-
-    # Convert logbook to numpy arrays
-    log_gen = numpy.array([log.select('gen') for log in logs])
-    log_nevals = numpy.array([log.select('nevals') for log in logs])
-    log_fitness_avg = numpy.array([log.chapters['fitness'].select('avg') for log in logs])
-    log_fitness_max = numpy.array([log.chapters['fitness'].select('max') for log in logs])
-    log_fitness_min = numpy.array([log.chapters['fitness'].select('min') for log in logs])
-    log_fitness_std = numpy.array([log.chapters['fitness'].select('std') for log in logs])
-    log_size_avg = numpy.array([log.chapters['size'].select('avg') for log in logs])
-    log_size_max = numpy.array([log.chapters['size'].select('max') for log in logs])
-    log_size_min = numpy.array([log.chapters['size'].select('min') for log in logs])
-    log_size_std = numpy.array([log.chapters['size'].select('std') for log in logs])
-    log_score_avg = numpy.array([log.chapters['score'].select('avg') for log in logs])
-    log_score_max = numpy.array([log.chapters['score'].select('max') for log in logs])
-    log_score_min = numpy.array([log.chapters['score'].select('min') for log in logs])
-    log_score_std = numpy.array([log.chapters['score'].select('std') for log in logs])
-    log_steps_avg = numpy.array([log.chapters['steps'].select('avg') for log in logs])
-    log_steps_max = numpy.array([log.chapters['steps'].select('max') for log in logs])
-    log_steps_min = numpy.array([log.chapters['steps'].select('min') for log in logs])
-    log_steps_std = numpy.array([log.chapters['steps'].select('std') for log in logs])
-    log_depth_avg = numpy.array([log.chapters['depth'].select('avg') for log in logs])
-    log_depth_max = numpy.array([log.chapters['depth'].select('max') for log in logs])
-    log_depth_min = numpy.array([log.chapters['depth'].select('min') for log in logs])
-    log_depth_std = numpy.array([log.chapters['depth'].select('std') for log in logs])
-
-    # summarise statistics for each generation
-    data_dic = {}
-    data_dic['gen'] = numpy.mean(log_gen, 0)
-    data_dic['nevals'] = numpy.mean(log_nevals, 0)
-
-    data_dic['fitness_avg'] = numpy.mean(log_fitness_avg, 0)
-    data_dic['fitness_max'] = numpy.max(log_fitness_max, 0)
-    data_dic['fitness_min'] = numpy.min(log_fitness_min, 0)
-    data_dic['fitness_std'] = numpy.sqrt(numpy.sum(log_fitness_std ** 2, 0))  # pooled std
-
-    data_dic['size_avg'] = numpy.mean(log_size_avg, 0)
-    data_dic['size_max'] = numpy.max(log_size_max, 0)
-    data_dic['size_min'] = numpy.min(log_size_min, 0)
-    data_dic['size_std'] = numpy.sqrt(numpy.sum(log_size_std ** 2, 0))  # pooled std
-
-    data_dic['score_avg'] = numpy.mean(log_score_avg, 0)
-    data_dic['score_max'] = numpy.max(log_score_max, 0)
-    data_dic['score_min'] = numpy.min(log_score_min, 0)
-    data_dic['score_std'] = numpy.sqrt(numpy.sum(log_score_std ** 2, 0))  # pooled std
-
-    data_dic['steps_avg'] = numpy.mean(log_steps_avg, 0)
-    data_dic['steps_max'] = numpy.max(log_steps_max, 0)
-    data_dic['steps_min'] = numpy.min(log_steps_min, 0)
-    data_dic['steps_std'] = numpy.sqrt(numpy.sum(log_steps_std ** 2, 0))  # pooled std
-
-    data_dic['depth_avg'] = numpy.mean(log_depth_avg, 0)
-    data_dic['depth_max'] = numpy.max(log_depth_max, 0)
-    data_dic['depth_min'] = numpy.min(log_depth_min, 0)
-    data_dic['depth_std'] = numpy.sqrt(numpy.sum(log_depth_std ** 2, 0))  # pooled std
-
-    # create data frame and write to csv
-    df = DataFrame(data_dic)
-
-    cols = ['gen', 'nevals', 'fitness_avg', 'fitness_max', 'fitness_min', 'fitness_std', 'size_avg', 'size_max',
-            'size_min', 'size_std', 'score_avg', 'score_min', 'score_max', 'score_std', 'steps_avg', 'steps_min',
-            'steps_max', 'steps_std', 'depth_avg', 'depth_max', 'depth_min', 'depth_std']
-    df.to_csv(os.path.join(dir, 'summary.csv'), sep=',', columns=cols)
-
-    # df[['gen', 'fitness_avg', 'fitness_std']].plot(x='gen', yerr='fitness_std')
-    # plt.show(kind='box')
-    # plt.savefig(os.path.join(dir, 'summary_fitness.png'))
-
-    plotstuff(df.ix[:, 'gen'], df.ix[:, 'steps_avg'], df.ix[:, 'size_avg'], 'steps_avg', 'size_avg')
-    plotstuff(df.ix[:, 'gen'], df.ix[:, 'fitness_avg'], df.ix[:, 'size_avg'], 'fitness_avg', 'size_avg')
-    plotstuff(df.ix[:, 'gen'], df.ix[:, 'score_avg'], df.ix[:, 'size_avg'], 'score_avg', 'size_avg')
-
-    return df
-
-
-def draw_individual(expr):
-    dir = create_results_dir()
-
-    nodes, edges, labels = gp.graph(expr)
-
-    ### Graphviz Section ###
-    import pygraphviz as pgv
-
-    g = pgv.AGraph()
-    g.add_nodes_from(nodes)
-
-    for i in nodes:
-        n = g.get_node(i)
-        n.attr["label"] = labels[i]
-
-    g.add_edges_from(edges)
-    g.layout(prog="dot")
-
-    g.draw(dir + "/tree.pdf")
-
-    # import matplotlib.pyplot as plt
-    # import networkx as nx
-    # from networkx.drawing.nx_agraph import graphviz_layout
-    #
-    # g = nx.Graph()
-    # g.add_nodes_from(nodes)
-    # g.add_edges_from(edges)
-    # pos = graphviz_layout(g, prog="dot")
-    #
-    # nx.draw_networkx_nodes(g, pos)
-    # nx.draw_networkx_edges(g, pos)
-    # nx.draw_networkx_labels(g, pos, labels)
-    # plt.show()
-
-
 def run_best_individual(individual):
     while True:
         print displayStrategyRun(individual)[0]
-        a = raw_input("Press to continue...")
-
-        if a is 'y':
+        a = raw_input("Do you want to run again [y/any_key]?")
+        if a is not 'y':
             break
 
 
-def best_individual_statistics(best_individual):
-    from pandas import DataFrame
-
-    dir = create_results_dir()
+## Run an individual 100 times with fixed random seed output results in csv
+def evaluate_best_individual(best_individual):
+    try:
+        from pandas import DataFrame
+    except:
+        return
 
     # evaluate best individual out of all runs
     number_of_test_runs = NUMBER_OF_TEST_RUNS
@@ -811,13 +572,14 @@ def best_individual_statistics(best_individual):
         best_stats['steps'].append(float(best_individual.steps))
 
     pd = DataFrame(best_stats)
-    pd.to_csv(dir + '/best_individual.csv', sep=',')
+    pd.to_csv('best_individual.csv', sep=',')
 
 
-def best_individuals_statistics(best_individuals):
-    from pandas import DataFrame
-
-    dir = create_results_dir()
+def evaluate_best_individuals(best_individuals):
+    try:
+        from pandas import DataFrame
+    except:
+        return
 
     # evaluate best individual out of all runs
     number_of_test_runs = NUMBER_OF_TEST_RUNS
@@ -842,46 +604,22 @@ def best_individuals_statistics(best_individuals):
         best_stats['steps'][i] /= float(number_of_test_runs)
 
     pd = DataFrame(best_stats)
-    pd.to_csv(dir + '/best_individuals.csv', sep=',')
-
-
-def save_parameters():
-    dir = create_results_dir()
-
-    dic = dict(NUMBER_OF_RUNS=NUMBER_OF_RUNS,
-               INIT_MIN_DEPTH=INIT_MIN_DEPTH,
-               INIT_MAX_DEPTH=INIT_MAX_DEPTH,
-               MUTATE_MIN_DEPTH=MUTATE_MIN_DEPTH,
-               MUTATE_MAX_DEPTH=MUTATE_MAX_DEPTH,
-               TOURNAMENT_SIZE=TOURNAMENT_SIZE,
-               POPULATION_SIZE=POPULATION_SIZE,
-               MATE_RATE=MATE_RATE,
-               MUTATION_RATE=MUTATION_RATE,
-               GENERATIONS=GENERATIONS
-               )
-
-    with open(dir + '/parameters', 'w') as f:
-        for i, j in dic.iteritems():
-            f.write(i + ' = ' + str(j) + '\n')
+    pd.to_csv('best_individuals.csv', sep=',')
 
 
 def save_best_individual(best_individual):
-    dir = create_results_dir()
-    with open(dir + '/best_individual.txt', 'w') as f:
+    with open('best_individual.txt', 'w') as f:
         f.write(str(best_individual))
 
 
 def save_best_individuals(best_individuals):
-    dir = create_results_dir()
-
     individuals = [str(ind) + '\n' for ind in best_individuals]
-    with open(dir + '/best_individuals.txt', 'w') as f:
+    with open('best_individuals.txt', 'w') as f:
         f.writelines(individuals)
 
 
 if __name__ == '__main__':
 
-    logs = []
     best_individuals = []
     individual = None
 
@@ -890,19 +628,15 @@ if __name__ == '__main__':
 
         pop, hof, stats, log = main()
 
-        logs.append(log)
+        # collect best individuals
         best_individuals.append(hof[0])
 
         # evaluate best individuals for each run
         if individual is None or individual.fitness.values[0] < hof[0].fitness.values[0]:
             individual = hof[0]
 
-    # output stats
-    draw_individual(individual)
-    logs_statistics(logs)
-    best_individual_statistics(individual)
-    best_individuals_statistics(best_individuals)
-    save_parameters()
+    evaluate_best_individual(individual)
+    evaluate_best_individuals(best_individuals)
     save_best_individual(individual)
     save_best_individuals(best_individuals)
     run_best_individual(individual)
