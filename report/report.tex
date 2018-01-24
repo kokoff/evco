@@ -1,5 +1,5 @@
 \documentclass[12pt,a4paper]{article}
-\usepackage[top=2cm, bottom=2cm, left=2cm, right=2cm]{geometry}
+\usepackage[top=2.4cm, bottom=2.4cm, left=2.4cm, right=2.4cm]{geometry}
 
 \usepackage{amsmath}
 \usepackage{amsfonts}
@@ -238,9 +238,9 @@
 
     % 4) Results [35 marks]
 	\section{Results} \label{results}
-	Three versions of the algorithm were compared to determine the best one. They use a different combination of the above mentioned function sets and evaluation functions \autoref{table:algorithms}. 
+	Three versions of the algorithm were compared to determine the best one. They use a different combination of the function sets and evaluation functions, presented in \autoref{methods}. The specification for each algorithm is shown in \autoref{table:algorithms}. 
 	
-	First algorithms 1 and 2 will be compared, followed by a comparison of 1 and 3. 
+	The algorithm evaluation procedure is described in \autoref{subsec:evaluation}. The results of each algorithm are presented and discussed in \autoref{subsec:results}.
 	
 		\begin{table}[h!]
 			\centering
@@ -260,14 +260,17 @@
 		\end{table}
 		
 		\subsection{Algorithm evaluation} \label{subsec:evaluation}
-		Each algorithm was ran 20 times. The best individual for each run was recorded and evaluated 100 times. In order to perform a fair comparison between algorithms, the random seed was fixed, for each of the evaluation runs, to the run number(from 0 to 99). This means that the food in the game environment was placed in the same positions for each pair of runs with the same random seed. 
+		Different algorithm were compared using their score, as opposed to using their fitness. This decision was made because algorithm 2 uses a different evaluation function from the others and also the aim of this study is to find an individual that achieves a maximum possible score.
+		
+		Each algorithm was ran 20 times. The best individual for each run was recorded and evaluated 100 times on 100 test problems. In order to perform a fair comparison between algorithms, for each test problem (from 0 to 99), the random seed was fixed to the problem number(from 0 to 99). This means that the food in the game environment was placed in the same positions for each run of the same test problem. For each of the best individuals, an average score was computed from all 100 test problems.
+		
 		
 		\subsection{Experimental results} \label{subsec:results}
-		On \autoref{fig:score_vs_size} the average score and size for each algorithm is shown. Comparing algorithm 1 (\autoref{fig:alg1_score_vs_size}) with algorithms 2 (\autoref{fig:alg2_score_vs_size}) and 3 \autoref{fig:alg3_score_vs_size}, it achieves a much higher score than the others. Furthermore, the average size of algorithm 1's tree is the lowest. This could be an indication that the proportion of good solution is higher in smaller tree sizes as suggested by \cite{langdon_why_1998}.
+		On \autoref{fig:score_vs_size} the average score and size for each algorithm is shown. Comparing algorithm 1 (\autoref{fig:alg1_score_vs_size}) with algorithms 2 (\autoref{fig:alg2_score_vs_size}) and 3 \autoref{fig:alg3_score_vs_size}, it achieves the highest score. Furthermore, the average size of algorithm 1's tree is the smallest of the three. This relationship between score and size, could be an indication that the proportion of good solution is higher in smaller tree sizes, as suggested by \cite{langdon_why_1998}.
 		
-		Algorithm 2 converges the fastest out of the three and it's average size starts off close to the limit of 150 in early generations and goes down in later generations. The fast convergence can be accounted to the simpler fitness function. Agents quickly learn to pursue the food, but since their fitness does not incorporate staying alive for longer, they do not adapt to avoid danger.
+		Algorithm 2 converges the fastest out of the three and it's average size starts off close to the limit of 150 in early generations and goes down in later generations. The quick convergence can be accounted to the simpler fitness function. Agents quickly learn to pursue the food in earlier generations, but struggle to learn to avoid danger and maximise their number of moves in later generations.
 		
-		Algorithm three achieves similar results to algorithm 2 in terms of the score achieved, however the average tree size is much larger than any of the others. In fact the size is above the size limit of 150, which indicates that bloat has occurred in several runs.
+		Algorithm three achieves similar results to algorithm 2 in terms of the score achieved, however the average tree size is much larger than any of the others. In fact the size is above the size limit of 150, which indicates that bloat has occurred in several runs. This may be due to the fact that beneficial constructs in the tree, require combinations of more nodes, since the direction of travel has to be determined before each move can be made.
 		
 		
 		\begin{figure}[h!]
@@ -294,7 +297,7 @@
 			\label{fig:score_vs_size}
 		\end{figure}
 		
-		In figures \autoref{fig:alg1_score}, \autoref{fig:alg2_score} and \autoref{fig:alg3_score} the maximum and minimum scores are shown in addition to the average. The minimum score for all three algorithms is 0, which is to be expected as mutation and crossover can often destroy good individuals. The maximum scores achieved however are much more comparable with algorithm 1 having the best one followed by 3 and 2.
+		In figures \autoref{fig:alg1_score}, \autoref{fig:alg2_score} and \autoref{fig:alg3_score} the maximum and minimum scores are shown in addition to the averages. The minimum score for all three algorithms is 0, which is to be expected, as mutation and crossover can destroy good individuals. The maximum scores achieved however, are much closer to each other. Algorithm 1 achieves the best maximum score, followed by 3 and 2. It is worth noting that, despite of bloat, algorithm 3 performs better than 2 in terms of maximum score and has a similar performance in terms of average score. This, perhaps, indicates the importance of the evaluation function.
 		
 		\begin{figure}[h!]
 			\begin{subfigure}{.33\textwidth}
@@ -319,9 +322,11 @@
 			\caption{Average maximum and minimum score for each generation out of 20 runs.}
 			\label{fig:score}
 		\end{figure}
-		Figures \autoref{fig:alg1_bests_dist}, \autoref{fig:alg2_bests_dist} and \autoref{fig:alg3_bests_dist} show the distribution of the best 20 individuals out of all runs over their average scores on the test problems. These scores were obtaained on the same set of 100 problems (see \autoref{subsec:evaluation}) and therefore are most reliable for comparing the three algorithms. Looking at the plots we see that for each algorithm there is a single best individual outlier. The distributions of algorithms 2 and 3 are very skewed and look almost identical. On the other hand the distribution of algorithm 1 is more spread out. Also, almost half of the individuals from algorithm 1 seem to outperform the individuals from algorithms 2 and 3.
+		Figures \autoref{fig:alg1_bests_dist}, \autoref{fig:alg2_bests_dist} and \autoref{fig:alg3_bests_dist} show the performance of the best 20 individuals on the test problems. Looking at the distributions, we see that for each algorithm there is a single best individual, which is an outlier. The distributions of algorithms 2 and 3 are very skewed and look almost identical. On the other hand, the distribution of algorithm 1 is more spread out. Furthermore, almost half of the individuals from algorithm 1 seem to outperform the individuals from algorithms 2 and 3, which is strong evidence that algorithm 1 is indeed better.
 		
-		In order to find out if there is a significant difference in the distributions a Mann–Whitney U test was conducted. The results of the test for each pair of algorithms can be seen in \autoref{table:u-test}. The p-values for algorithm 1 and 2 and 1 and 3 are below the threshold of 0.05. This means that the null hypothesis that the sample for algorithm 1 comes from the same distribution as the other two samples. However this is not true for algorithms 2 and 3 since the p-value for them is much higher than the threshold of 0.15.
+		However, GP algorithms are influenced by many random factors and can converge to different solutions across different runs. For this reason statistical tests should be used (\cite{arcuri_practical_2011}, \cite{derrac_practical_2011}), in order to determine if there is a significant difference between algorithms.
+		
+		A Mann–Whitney U test was conducted, in order to compare each pair of algorithms. The results of the test for each can be seen in \autoref{table:u-test}. The null hypothesis of the Mann–Whitney U test is that the two tested samples come from the same distribution. It is rejected if the resulting p-value is less than 0,05. The p-values, obtained for algorithms 1 and, and algorithms 1 and 3 are below the threshold of 0.05. Therefore, it is safe to assume that algorithm 1 is better than the other two. In contrast, the p-value, from the test conducted on algorithms 2 and 3, is higher 0.05, which means that it is unclear weather or not one is better than the other.  
 		
 		
 		\begin{figure}[h!]
@@ -351,7 +356,7 @@
 		
 		\begin{table}[h!]
 			\centering
-			\begin{tabu} to \textwidth {|X[l]|X[l]|X[l]|}
+			\begin{tabu} to \textwidth {|X[1l]|X[1l]|X[2l]|}
 				\hline
 				\textbf{First algorithm} & \textbf{Second algorithm} & \textbf{p-value} \\ \hline
 				Algorithm 1 & Algorithm 2 & 0.0038075456551803864 \\ \hline
@@ -363,8 +368,7 @@
 			\label{table:u-test}
 		\end{table}	
 		
-		Finally, looking at \autoref{fig:alg1_best_dist}, \autoref{fig:alg2_best_dist} and \autoref{fig:alg3_best_dist}, a comparison between the single best individuals,from all 20 runs of each algorithm, can be made. For about 50\% of the runs, algorithm 1 has achieved a score of around 35. However, the distribution is bimodal and has the largest spread out of all algorithms.
-		
+		Figures \autoref{fig:alg1_best_dist}, \autoref{fig:alg2_best_dist} and \autoref{fig:alg3_best_dist} show the scores of the single best individuals evaluated on the 100 test problems. For about 50\% of the runs, algorithm 1 has achieved a score of around 35. However for nearly 20 of the runs the score is around 0. Algorithm 2 has a very skewed distribution =, with only a few test problem evaluations with a score above 10 Algorithm 3 again has a skewed distribution, however the spread is much smaller with all test runs evaluating between 14 and 17.
 		
 		\begin{figure}[h!]
 			\begin{subfigure}{.33\textwidth}
@@ -390,29 +394,28 @@
 			\label{fig:best_dist}
 		\end{figure}
 		
-		
+		The strategy of almost all individuals, achieving a score above 25, was to stick next to wall, circling the grid, and going away from the wall only to get food. They would also learn to sense food only in one direction. Some of them managed to evolve, to avoid their own body in certain situations, however none of them managed to avoid it in all situations. This might suggest that given more generations they could evolve this essential strategy. None of the individuals followed a Hamiltonian path. 
 		
 
 		
 
     % 5) Conclusions [10 marks]
 	\section{Conclusion} \label{conclusions}
+	A genetic programming algorithm was developed in order to evolve an intelligent agent to play the snake game. The effects of different evaluation functions and different non-terminal sets on the convergence, score and tree size of the algorithm were compared. It was shown that a multi objective evaluation function, with a penalty for individuals who do not seek food, results in slightly slower convergence, but a much higher score. The choice of non-terminal function set, which allows the construction of smaller beneficial sub trees, resulted in a higher score.	The algorithm that performed best was shown to maintain a smaller tree size compared to the others, which might be due to the relationship between density of high fitness individuals and tree size \cite{langdon_why_1998}.
 	
-	key points
-	representation may be shit
-	hamiltonian path not achieved
-	
-	connection with snake paper
-	potential connection with size stuff
-	
-	
+	Out of the identified beneficial behaviour, agents managed to learn to avoid walls and seek food, but not to avoid their own body. None of the solutions managed to evolve a strategy to follow a Hamiltonian path and none of them managed to achieve the maximum score. 
 	
 	\subsection{Future Work}
-	more computation
-	iterative method from paper
-	mmix between non terminals
+	The algorithm was evaluated using two different non-terminal sets. In future work it might be worth, trying different combinations of the two sets. 
 	
-	NOTE ADD REFS TO STATS
+	The performed experiment were highly restricted by computational resources. Ehlis \cite{ehlis_application_2000} used a population of 10000 for a similar version of the same problem and managed to achieve the maximum score. This suggests that it might be worth evaluating the algorithm, presented in this work, with a larger population size.
+	
+	Langdon et. al. \cite{langdon_why_1998} criticise GP algorithms on the lack of ability to exploit inherent symmetries in the solution space. They show that the performance of GP, on the Santa Fe Ant problem, is slightly better than that of random search. The representation of individuals they use is the same as the one used in this work. This suggests that using a different representation such as the one in \cite{yeh_snake_2016} might yield better results.
+	
+	The approach presented in \cite{christensen_solving_2007} systematically	considers all small trees in the search space of GP. Adapting it to the snake game problem would potentially speed up convergence significantly.
+	
+	
+	
 
 	\printbibliography
 	

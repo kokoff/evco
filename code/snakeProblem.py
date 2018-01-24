@@ -496,10 +496,10 @@ def main():
     stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
     stats_score = tools.Statistics(lambda ind: ind.score)
     stats_steps = tools.Statistics(lambda ind: ind.steps)
-    stats_size = tools.Statistics(lambda ind: ind.height)
-    stats_size_len = tools.Statistics(lambda ind: len(ind))
+    stats_depth = tools.Statistics(lambda ind: ind.height)
+    stats_size = tools.Statistics(lambda ind: len(ind))
     stats = tools.MultiStatistics(fitness=stats_fit, score=stats_score, steps=stats_steps, size=stats_size,
-                                  size_len=stats_size_len)
+                                  depth=stats_depth)
     stats.register("avg", numpy.mean)
     stats.register("std", numpy.std)
     stats.register("min", numpy.min)
@@ -513,7 +513,9 @@ def main():
 
 ## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
 # random.seed(42)
-NUMBER_OF_RUNS = 10
+RES_DIR = 'res_eval'
+NUMBER_OF_TEST_RUNS = 100
+NUMBER_OF_RUNS = 20
 
 POPULATION_SIZE = 600
 MATE_RATE = 0.6
@@ -549,16 +551,16 @@ pset.addPrimitive(snake.if_tail_left, 2)
 pset.addPrimitive(snake.if_tail_right, 2)
 
 # pset.addPrimitive(snake.if_food_ahead, 2)
-# pset.addPrimitive(snake.if_food_left, 2)
-# pset.addPrimitive(snake.if_food_right, 2)
+# pset.addPrimitive(snake.if_food_on_left, 2)
+# pset.addPrimitive(snake.if_food_on_right, 2)
 #
 # pset.addPrimitive(snake.if_wall_ahead, 2)
-# pset.addPrimitive(snake.if_wall_left, 2)
-# pset.addPrimitive(snake.if_wall_right, 2)
+# pset.addPrimitive(snake.if_wall_on_left, 2)
+# pset.addPrimitive(snake.if_wall_on_right, 2)
 #
 # pset.addPrimitive(snake.if_tail_ahead, 2)
-# pset.addPrimitive(snake.if_tail_left, 2)
-# pset.addPrimitive(snake.if_tail_right, 2)
+# pset.addPrimitive(snake.if_tail_on_left, 2)
+# pset.addPrimitive(snake.if_tail_on_right, 2)
 #
 # pset.addPrimitive(snake.if_moving_up, 2)
 # pset.addPrimitive(snake.if_moving_down, 2)
@@ -662,7 +664,7 @@ def create_results_dir():
     import os
 
     # create directory to store results
-    dir = 'res'
+    dir = RES_DIR
     if not os.path.exists(dir):
         os.mkdir(dir)
     return dir
@@ -693,6 +695,10 @@ def logs_statistics(logs):
     log_steps_max = numpy.array([log.chapters['steps'].select('max') for log in logs])
     log_steps_min = numpy.array([log.chapters['steps'].select('min') for log in logs])
     log_steps_std = numpy.array([log.chapters['steps'].select('std') for log in logs])
+    log_depth_avg = numpy.array([log.chapters['depth'].select('avg') for log in logs])
+    log_depth_max = numpy.array([log.chapters['depth'].select('max') for log in logs])
+    log_depth_min = numpy.array([log.chapters['depth'].select('min') for log in logs])
+    log_depth_std = numpy.array([log.chapters['depth'].select('std') for log in logs])
 
     # summarise statistics for each generation
     data_dic = {}
@@ -719,12 +725,17 @@ def logs_statistics(logs):
     data_dic['steps_min'] = numpy.min(log_steps_min, 0)
     data_dic['steps_std'] = numpy.sqrt(numpy.sum(log_steps_std ** 2, 0))  # pooled std
 
+    data_dic['depth_avg'] = numpy.mean(log_depth_avg, 0)
+    data_dic['depth_max'] = numpy.max(log_depth_max, 0)
+    data_dic['depth_min'] = numpy.min(log_depth_min, 0)
+    data_dic['depth_std'] = numpy.sqrt(numpy.sum(log_depth_std ** 2, 0))  # pooled std
+
     # create data frame and write to csv
     df = DataFrame(data_dic)
 
     cols = ['gen', 'nevals', 'fitness_avg', 'fitness_max', 'fitness_min', 'fitness_std', 'size_avg', 'size_max',
             'size_min', 'size_std', 'score_avg', 'score_min', 'score_max', 'score_std', 'steps_avg', 'steps_min',
-            'steps_max', 'steps_std']
+            'steps_max', 'steps_std', 'depth_avg', 'depth_max', 'depth_min', 'depth_std']
     df.to_csv(os.path.join(dir, 'summary.csv'), sep=',', columns=cols)
 
     # df[['gen', 'fitness_avg', 'fitness_std']].plot(x='gen', yerr='fitness_std')
@@ -788,16 +799,16 @@ def best_individual_statistics(best_individual):
     dir = create_results_dir()
 
     # evaluate best individual out of all runs
-    number_of_test_runs = 100
+    number_of_test_runs = NUMBER_OF_TEST_RUNS
     best_stats = {'fitness': [], 'score': [], 'steps': []}
 
     for i in range(number_of_test_runs):
         random.seed(i)
         evalSnake(best_individual)
         random.seed()
-        best_stats['fitness'].append(best_individual.fitness.values[0])
-        best_stats['score'].append(best_individual.score)
-        best_stats['steps'].append(best_individual.steps)
+        best_stats['fitness'].append(float(best_individual.fitness.values[0]))
+        best_stats['score'].append(float(best_individual.score))
+        best_stats['steps'].append(float(best_individual.steps))
 
     pd = DataFrame(best_stats)
     pd.to_csv(dir + '/best_individual.csv', sep=',')
@@ -809,22 +820,26 @@ def best_individuals_statistics(best_individuals):
     dir = create_results_dir()
 
     # evaluate best individual out of all runs
-    number_of_test_runs = 100
-    best_stats = {'fitness': [0 for i in range(len(best_individuals))],
-                  'score': [0 for i in range(len(best_individuals))],
-                  'steps': [0 for i in range(len(best_individuals))]}
+    number_of_test_runs = NUMBER_OF_TEST_RUNS
+    best_stats = {'fitness': [0.0 for i in range(len(best_individuals))],
+                  'score': [0.0 for i in range(len(best_individuals))],
+                  'steps': [0.0 for i in range(len(best_individuals))]}
 
     for i in range(len(best_individuals)):
         for j in range(number_of_test_runs):
+            individual = best_individuals[i]
+
             random.seed(i)
-            evalSnake(best_individual)
+            evalSnake(individual)
             random.seed()
-            best_stats['fitness'][i] += best_individual.fitness.values[0]
-            best_stats['score'][i] += best_individual.score
-            best_stats['steps'][i] += best_individual.steps
-        best_stats['fitness'][i] /= number_of_test_runs
-        best_stats['score'][i] /= number_of_test_runs
-        best_stats['steps'][i] /= number_of_test_runs
+
+            best_stats['fitness'][i] += individual.fitness.values[0]
+            best_stats['score'][i] += individual.score
+            best_stats['steps'][i] += individual.steps
+
+        best_stats['fitness'][i] /= float(number_of_test_runs)
+        best_stats['score'][i] /= float(number_of_test_runs)
+        best_stats['steps'][i] /= float(number_of_test_runs)
 
     pd = DataFrame(best_stats)
     pd.to_csv(dir + '/best_individuals.csv', sep=',')
@@ -856,11 +871,19 @@ def save_best_individual(best_individual):
         f.write(str(best_individual))
 
 
+def save_best_individuals(best_individuals):
+    dir = create_results_dir()
+
+    individuals = [str(ind) + '\n' for ind in best_individuals]
+    with open(dir + '/best_individuals.txt', 'w') as f:
+        f.writelines(individuals)
+
+
 if __name__ == '__main__':
 
     logs = []
     best_individuals = []
-    best_individual = None
+    individual = None
 
     for i in range(NUMBER_OF_RUNS):
         print 'RUN', i
@@ -871,16 +894,17 @@ if __name__ == '__main__':
         best_individuals.append(hof[0])
 
         # evaluate best individuals for each run
-        if best_individual is None or best_individual.fitness.values[0] < hof[0].fitness.values[0]:
-            best_individual = hof[0]
+        if individual is None or individual.fitness.values[0] < hof[0].fitness.values[0]:
+            individual = hof[0]
 
     # output stats
-    draw_individual(best_individual)
+    draw_individual(individual)
     logs_statistics(logs)
-    best_individual_statistics(best_individual)
+    best_individual_statistics(individual)
     best_individuals_statistics(best_individuals)
     save_parameters()
-    save_best_individual(best_individual)
-    run_best_individual(best_individual)
+    save_best_individual(individual)
+    save_best_individuals(best_individuals)
+    run_best_individual(individual)
 
-    print best_individual
+    print individual
